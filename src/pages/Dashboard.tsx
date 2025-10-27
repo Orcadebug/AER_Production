@@ -119,10 +119,11 @@ export default function Dashboard() {
       });
       const { storageId } = await result.json();
 
-      // Encrypt file metadata
-      const fileMetadata = `File: ${file.name} (${file.type})`;
-      const fileSummary = `Uploaded file: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
-      const encryptedContent = encrypt(fileMetadata);
+      // Create a more descriptive summary for files
+      const fileSummary = `File uploaded: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+      const fileContent = `Uploaded file: ${file.name}`;
+      
+      const encryptedContent = encrypt(fileContent);
       const encryptedTitle = encrypt(file.name);
       const encryptedSummary = encrypt(fileSummary);
 
@@ -140,7 +141,7 @@ export default function Dashboard() {
         encryptedContent,
         encryptedTitle,
         encryptedSummary,
-        plaintextContent: fileMetadata, // For AI tag generation
+        plaintextContent: fileContent,
       });
       toast.success("File uploaded successfully");
     } catch (error) {
@@ -184,6 +185,27 @@ export default function Dashboard() {
     } catch (error) {
       toast.error("Failed to delete context");
     }
+  };
+
+  // Helper function to get short file type display
+  const getShortFileType = (mimeType: string) => {
+    const typeMap: Record<string, string> = {
+      "application/pdf": "PDF",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+      "application/msword": "DOC",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
+      "application/vnd.ms-excel": "XLS",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation": "PPTX",
+      "application/vnd.ms-powerpoint": "PPT",
+      "text/plain": "TXT",
+      "text/csv": "CSV",
+      "image/jpeg": "JPEG",
+      "image/png": "PNG",
+      "image/gif": "GIF",
+      "image/svg+xml": "SVG",
+    };
+    
+    return typeMap[mimeType] || mimeType.split("/")[1]?.toUpperCase() || "FILE";
   };
 
   // Decrypt full context content
@@ -448,9 +470,9 @@ export default function Dashboard() {
                   <p className="text-sm text-muted-foreground line-clamp-3">
                     {getDecryptedSummary(context)}
                   </p>
-                  {context.type === "file" && (
-                    <Badge variant="secondary" className="mt-2">
-                      {context.fileType}
+                  {context.type === "file" && context.fileType && (
+                    <Badge variant="secondary" className="mt-2 text-xs">
+                      {getShortFileType(context.fileType)}
                     </Badge>
                   )}
                 </CardContent>
