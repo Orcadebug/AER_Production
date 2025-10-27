@@ -54,7 +54,7 @@ export const list = query({
 
     if (args.tagId) {
       contexts = contexts.filter(
-        (c) => c.tagIds && c.tagIds.includes(args.tagId)
+        (c) => c.tagIds && c.tagIds.includes(args.tagId!)
       );
     }
 
