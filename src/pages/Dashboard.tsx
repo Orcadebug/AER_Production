@@ -85,11 +85,11 @@ export default function Dashboard() {
 
       await createContext({
         title: title.substring(0, 50), // Truncated for search
-        content: "", // No plaintext content stored
         type: "note",
         projectId: projectId && projectId !== "none" ? projectId as Id<"projects"> : undefined,
         encryptedContent,
         encryptedTitle,
+        plaintextContent: content, // For AI tag generation (not stored)
       });
       toast.success("Note added successfully");
       setIsAddingContext(false);
@@ -112,7 +112,8 @@ export default function Dashboard() {
       const { storageId } = await result.json();
 
       // Encrypt file metadata
-      const encryptedContent = encrypt(`File: ${file.name}`);
+      const fileMetadata = `File: ${file.name} (${file.type})`;
+      const encryptedContent = encrypt(fileMetadata);
       const encryptedTitle = encrypt(file.name);
 
       if (!encryptedContent || !encryptedTitle) {
@@ -122,13 +123,13 @@ export default function Dashboard() {
 
       await createContext({
         title: file.name.substring(0, 50),
-        content: "",
         type: "file",
         fileId: storageId,
         fileName: file.name,
         fileType: file.type,
         encryptedContent,
         encryptedTitle,
+        plaintextContent: fileMetadata, // For AI tag generation
       });
       toast.success("File uploaded successfully");
     } catch (error) {
@@ -377,6 +378,19 @@ export default function Dashboard() {
                       <CardDescription className="text-xs mt-1">
                         {new Date(context._creationTime).toLocaleDateString()}
                       </CardDescription>
+                      {context.tags && context.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {context.tags.slice(0, 5).map((tag, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <Button
                       variant="ghost"

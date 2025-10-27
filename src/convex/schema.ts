@@ -69,6 +69,8 @@ const schema = defineSchema(
       // Plaintext fields for indexing/search (minimal metadata)
       title: v.string(),
       type: v.union(v.literal("note"), v.literal("file"), v.literal("web")),
+      // AI-generated tags for semantic search (unencrypted)
+      tags: v.optional(v.array(v.string())),
       // Encrypted fields (actual content)
       encryptedContent: v.object({
         ciphertext: v.string(),

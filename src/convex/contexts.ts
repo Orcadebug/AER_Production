@@ -11,7 +11,6 @@ const encryptedDataValidator = v.object({
 export const create = mutation({
   args: {
     title: v.string(),
-    content: v.string(),
     type: v.union(v.literal("note"), v.literal("file"), v.literal("web")),
     projectId: v.optional(v.id("projects")),
     tagIds: v.optional(v.array(v.id("tags"))),
@@ -24,20 +23,22 @@ export const create = mutation({
     encryptedTitle: v.optional(encryptedDataValidator),
     encryptedSummary: v.optional(encryptedDataValidator),
     encryptedMetadata: v.optional(encryptedDataValidator),
+    // Plaintext content for AI tag generation (will be discarded)
+    plaintextContent: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) throw new Error("Unauthorized");
 
-    // Log audit event
-    await ctx.scheduler.runAfter(0, internal.audit.logAuditEvent, {
-      userId: user._id,
-      action: "CREATE_CONTEXT",
-      resourceType: "context",
-      success: true,
-    });
+    // Get user's total context count for tag granularity
+    const totalContexts = await ctx.db
+      .query("contexts")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect()
+      .then((contexts) => contexts.length);
 
-    return await ctx.db.insert("contexts", {
+    // Insert context first (without AI tags)
+    const contextId = await ctx.db.insert("contexts", {
       userId: user._id,
       title: args.title,
       type: args.type,
@@ -52,6 +53,30 @@ export const create = mutation({
       encryptedSummary: args.encryptedSummary,
       encryptedMetadata: args.encryptedMetadata,
     });
+
+    // Schedule AI tag generation in background (non-blocking)
+    if (args.plaintextContent && process.env.OPENAI_API_KEY) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.ai.generateAndUpdateTags,
+        {
+          contextId,
+          content: args.plaintextContent,
+          title: args.title,
+          totalContexts,
+        }
+      );
+    }
+
+    // Log audit event
+    await ctx.scheduler.runAfter(0, internal.audit.logAuditEvent, {
+      userId: user._id,
+      action: "CREATE_CONTEXT",
+      resourceType: "context",
+      success: true,
+    });
+
+    return contextId;
   },
 });
 
@@ -109,6 +134,51 @@ export const get = query({
     if (!context || context.userId !== user._id) return null;
 
     return context;
+  },
+});
+
+export const semanticSearch = query({
+  args: { query: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+
+    // Get all user contexts with tags
+    const allContexts = await ctx.db
+      .query("contexts")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    // If no OpenAI key, fall back to basic search
+    if (!process.env.OPENAI_API_KEY) {
+      return allContexts
+        .filter((c) => 
+          c.title.toLowerCase().includes(args.query.toLowerCase()) ||
+          c.tags?.some((tag) => tag.includes(args.query.toLowerCase()))
+        )
+        .slice(0, 20);
+    }
+
+    // Prepare data for AI ranking
+    const contextsWithTags = allContexts
+      .filter((c) => c.tags && c.tags.length > 0)
+      .map((c) => ({
+        contextId: c._id,
+        tags: c.tags || [],
+        title: c.title,
+      }));
+
+    if (contextsWithTags.length === 0) {
+      return [];
+    }
+
+    // Basic tag-based search (AI semantic search would require an action)
+    return allContexts
+      .filter((c) => 
+        c.title.toLowerCase().includes(args.query.toLowerCase()) ||
+        c.tags?.some((tag) => tag.includes(args.query.toLowerCase()))
+      )
+      .slice(0, 20);
   },
 });
 

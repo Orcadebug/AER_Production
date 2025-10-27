@@ -31,7 +31,6 @@ export const uploadContext = httpAction(async (ctx, request) => {
     // Create context via mutation
     const contextId = await ctx.runMutation(api.contexts.create, {
       title: title || "Untitled",
-      content: content || "",
       type: type || "note",
       encryptedContent,
       encryptedTitle,
@@ -89,7 +88,6 @@ export const batchUploadContexts = httpAction(async (ctx, request) => {
       try {
         const contextId = await ctx.runMutation(api.contexts.create, {
           title: context.title || "Untitled",
-          content: context.content || "",
           type: context.type || "note",
           encryptedContent: context.encryptedContent,
           encryptedTitle: context.encryptedTitle,
