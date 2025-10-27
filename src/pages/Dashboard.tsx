@@ -38,9 +38,10 @@ export default function Dashboard() {
       ? { tagId: selectedTag, paginationOpts: { numItems: 20, cursor: paginationCursor } }
       : { paginationOpts: { numItems: 20, cursor: paginationCursor } }
   );
-  const allContexts = useQuery(api.contexts.getAllContextsForSemanticSearch);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const searchResults = useQuery(
+    api.contexts.search,
+    searchQuery ? { query: searchQuery } : "skip"
+  );
   const projects = useQuery(api.projects.list);
   const tags = useQuery(api.tags.list);
 
