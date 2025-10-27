@@ -84,7 +84,7 @@ export const generateSummary = internalAction({
   },
   handler: async (ctx, args) => {
     try {
-      const prompt = `Summarize the following content in 2-3 clear, concise sentences. Focus on the main points and key information.
+      const prompt = `Reduce the following text by identifying and removing low-information tokens (articles, redundant adjectives, filler phrases) while keeping all high-value technical terms, numbers, logical operators, and key concepts intact. Then summarize in 2-3 clear, concise sentences focusing on main points and key information.
 
 Title: ${args.title}
 Content: ${args.content.substring(0, 2000)}
