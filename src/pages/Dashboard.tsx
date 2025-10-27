@@ -6,9 +6,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { useEncryption } from "@/hooks/use-encryption";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
-import { FileText, Loader2, LogOut, Plus, Search, Upload, X, FolderOpen, Tag as TagIcon } from "lucide-react";
+import { FileText, Loader2, LogOut, Plus, Search, Upload, X, FolderOpen, Tag as TagIcon, Lock } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ import { Id } from "@/convex/_generated/dataModel";
 
 export default function Dashboard() {
   const { isLoading, isAuthenticated, user, signOut } = useAuth();
+  const { encrypt, decrypt, isReady: encryptionReady } = useEncryption();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProject, setSelectedProject] = useState<Id<"projects"> | "all">("all");
@@ -25,7 +27,6 @@ export default function Dashboard() {
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [paginationCursor, setPaginationCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
 
   const contextsResult = useQuery(
     api.contexts.listPaginated,
@@ -47,7 +48,7 @@ export default function Dashboard() {
 
   const displayContexts = searchQuery ? searchResults : contextsResult?.page;
 
-  if (isLoading) {
+  if (isLoading || !encryptionReady) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-[#8BA888]" />
@@ -73,11 +74,22 @@ export default function Dashboard() {
     const projectId = formData.get("projectId") as string;
 
     try {
+      // Encrypt the content
+      const encryptedContent = encrypt(content);
+      const encryptedTitle = encrypt(title);
+
+      if (!encryptedContent || !encryptedTitle) {
+        toast.error("Encryption failed");
+        return;
+      }
+
       await createContext({
-        title,
-        content,
+        title: title.substring(0, 50), // Truncated for search
+        content: "", // No plaintext content stored
         type: "note",
         projectId: projectId && projectId !== "none" ? projectId as Id<"projects"> : undefined,
+        encryptedContent,
+        encryptedTitle,
       });
       toast.success("Note added successfully");
       setIsAddingContext(false);
@@ -99,13 +111,24 @@ export default function Dashboard() {
       });
       const { storageId } = await result.json();
 
+      // Encrypt file metadata
+      const encryptedContent = encrypt(`File: ${file.name}`);
+      const encryptedTitle = encrypt(file.name);
+
+      if (!encryptedContent || !encryptedTitle) {
+        toast.error("Encryption failed");
+        return;
+      }
+
       await createContext({
-        title: file.name,
-        content: `File: ${file.name}`,
+        title: file.name.substring(0, 50),
+        content: "",
         type: "file",
         fileId: storageId,
         fileName: file.name,
         fileType: file.type,
+        encryptedContent,
+        encryptedTitle,
       });
       toast.success("File uploaded successfully");
     } catch (error) {
@@ -151,6 +174,15 @@ export default function Dashboard() {
     }
   };
 
+  // Decrypt context content for display
+  const getDecryptedContent = (context: any) => {
+    if (context.encryptedContent) {
+      const decrypted = decrypt(context.encryptedContent);
+      return decrypted || "[Encrypted - Unable to decrypt]";
+    }
+    return "[No content]";
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -159,6 +191,10 @@ export default function Dashboard() {
           <div className="flex items-center gap-3">
             <img src="/logo.svg" alt="Aer" className="h-8 w-8 cursor-pointer" onClick={() => navigate("/")} />
             <h1 className="text-2xl font-bold tracking-tight">Aer</h1>
+            <Badge variant="secondary" className="ml-2">
+              <Lock className="h-3 w-3 mr-1" />
+              E2E Encrypted
+            </Badge>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">{user?.email}</span>
@@ -197,7 +233,7 @@ export default function Dashboard() {
                 <form onSubmit={handleAddNote}>
                   <DialogHeader>
                     <DialogTitle>Add New Note</DialogTitle>
-                    <DialogDescription>Create a new context entry</DialogDescription>
+                    <DialogDescription>Create a new encrypted context entry</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <Input name="title" placeholder="Title" required />
@@ -335,6 +371,7 @@ export default function Dashboard() {
                     <div className="flex-1">
                       <CardTitle className="text-lg flex items-center gap-2">
                         {context.type === "file" && <FileText className="h-4 w-4" />}
+                        <Lock className="h-3 w-3 text-muted-foreground" />
                         {context.title}
                       </CardTitle>
                       <CardDescription className="text-xs mt-1">
@@ -352,7 +389,9 @@ export default function Dashboard() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground line-clamp-3">{context.content}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-3">
+                    {getDecryptedContent(context)}
+                  </p>
                   {context.type === "file" && (
                     <Badge variant="secondary" className="mt-2">
                       {context.fileType}
@@ -370,7 +409,6 @@ export default function Dashboard() {
             <Button
               variant="outline"
               onClick={() => setPaginationCursor(contextsResult.continueCursor)}
-              disabled={!hasMore}
             >
               Load More
             </Button>

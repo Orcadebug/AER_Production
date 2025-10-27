@@ -40,7 +40,6 @@ export const create = mutation({
     return await ctx.db.insert("contexts", {
       userId: user._id,
       title: args.title,
-      content: args.content,
       type: args.type,
       projectId: args.projectId,
       tagIds: args.tagIds,
@@ -94,7 +93,7 @@ export const search = query({
     return await ctx.db
       .query("contexts")
       .withSearchIndex("search_content", (q) =>
-        q.search("content", args.query).eq("userId", user._id)
+        q.search("title", args.query).eq("userId", user._id)
       )
       .take(20);
   },
@@ -136,7 +135,6 @@ export const update = mutation({
 
     await ctx.db.patch(args.id, {
       title: args.title,
-      content: args.content,
       projectId: args.projectId,
       tagIds: args.tagIds,
       encryptedContent: args.encryptedContent,
@@ -256,7 +254,7 @@ export const exportAllContexts = query({
       if (context.projectId) {
         markdown += `**Project ID:** ${context.projectId}\n\n`;
       }
-      markdown += `**Content:**\n\n${context.content}\n\n`;
+      markdown += `**Content:** [Encrypted - decrypt client-side to view]\n\n`;
       markdown += `---\n\n`;
     }
 
