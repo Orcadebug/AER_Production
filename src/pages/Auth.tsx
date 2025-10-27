@@ -19,6 +19,8 @@ import { ArrowRight, Loader2, Mail, UserX } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
+import { APP_CONFIG } from "@/lib/config";
+
 interface AuthProps {
   redirectAfterAuth?: string;
 }
@@ -267,12 +269,12 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           <div className="py-4 px-6 text-xs text-center text-muted-foreground bg-muted border-t rounded-b-lg">
             Secured by{" "}
             <a
-              href="https://vly.ai"
+              href={APP_CONFIG.authProvider.url}
               target="_blank"
               rel="noopener noreferrer"
               className="underline hover:text-primary transition-colors"
             >
-              vly.ai
+              {APP_CONFIG.authProvider.name}
             </a>
           </div>
         </Card>
