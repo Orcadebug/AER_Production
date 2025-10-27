@@ -137,35 +137,18 @@ export const get = query({
   },
 });
 
-export const semanticSearch = query({
-  args: { query: v.string() },
-  handler: async (ctx, args) => {
+export const getAllContextsForSemanticSearch = query({
+  args: {},
+  handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
     if (!user) return [];
 
-    // Get all user contexts with tags
     const allContexts = await ctx.db
       .query("contexts")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    // If no Perplexity key, fall back to basic search
-    if (!process.env.PERPLEXITY_API_KEY) {
-      return allContexts
-        .filter((c) =>
-          c.title.toLowerCase().includes(args.query.toLowerCase()) ||
-          c.tags?.some((tag) => tag.includes(args.query.toLowerCase()))
-        )
-        .slice(0, 20);
-    }
-
-    // Basic tag-based search (AI semantic search would require an action)
-    return allContexts
-      .filter((c) =>
-        c.title.toLowerCase().includes(args.query.toLowerCase()) ||
-        c.tags?.some((tag) => tag.includes(args.query.toLowerCase()))
-      )
-      .slice(0, 20);
+    return allContexts;
   },
 });
 
