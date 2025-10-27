@@ -23,7 +23,7 @@ export const create = mutation({
     encryptedTitle: v.optional(encryptedDataValidator),
     encryptedSummary: v.optional(encryptedDataValidator),
     encryptedMetadata: v.optional(encryptedDataValidator),
-    // Plaintext content for AI tag generation (will be discarded)
+    // Plaintext content for AI tag generation and summary (will be discarded)
     plaintextContent: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -152,7 +152,7 @@ export const semanticSearch = query({
     // If no Perplexity key, fall back to basic search
     if (!process.env.PERPLEXITY_API_KEY) {
       return allContexts
-        .filter((c) => 
+        .filter((c) =>
           c.title.toLowerCase().includes(args.query.toLowerCase()) ||
           c.tags?.some((tag) => tag.includes(args.query.toLowerCase()))
         )
@@ -161,7 +161,7 @@ export const semanticSearch = query({
 
     // Basic tag-based search (AI semantic search would require an action)
     return allContexts
-      .filter((c) => 
+      .filter((c) =>
         c.title.toLowerCase().includes(args.query.toLowerCase()) ||
         c.tags?.some((tag) => tag.includes(args.query.toLowerCase()))
       )

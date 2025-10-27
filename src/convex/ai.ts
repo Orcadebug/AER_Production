@@ -75,6 +75,43 @@ Tags:`;
 });
 
 /**
+ * Generate a brief 2-3 sentence summary of content
+ */
+export const generateSummary = internalAction({
+  args: {
+    content: v.string(),
+    title: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const prompt = `Summarize the following content in 2-3 clear, concise sentences. Focus on the main points and key information.
+
+Title: ${args.title}
+Content: ${args.content.substring(0, 2000)}
+
+Provide only the summary, no additional text or formatting:`;
+
+      const perplexity = getPerplexity();
+      const response = await perplexity.chat.completions.create({
+        model: "sonar",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
+        max_tokens: 150,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      const summary = typeof content === "string" ? content.trim() : "";
+      
+      return summary || args.content.substring(0, 150) + "...";
+    } catch (error) {
+      console.error("Error generating summary:", error);
+      // Fallback to truncation
+      return args.content.substring(0, 150) + "...";
+    }
+  },
+});
+
+/**
  * Generate tags and update context (called as scheduled function)
  */
 export const generateAndUpdateTags = internalAction({
