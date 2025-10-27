@@ -1,0 +1,149 @@
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import { getCurrentUser } from "./users";
+
+export const create = mutation({
+  args: {
+    title: v.string(),
+    content: v.string(),
+    type: v.union(v.literal("note"), v.literal("file"), v.literal("web")),
+    projectId: v.optional(v.id("projects")),
+    tagIds: v.optional(v.array(v.id("tags"))),
+    fileId: v.optional(v.id("_storage")),
+    fileName: v.optional(v.string()),
+    fileType: v.optional(v.string()),
+    url: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Unauthorized");
+
+    return await ctx.db.insert("contexts", {
+      userId: user._id,
+      title: args.title,
+      content: args.content,
+      type: args.type,
+      projectId: args.projectId,
+      tagIds: args.tagIds,
+      fileId: args.fileId,
+      fileName: args.fileName,
+      fileType: args.fileType,
+      url: args.url,
+    });
+  },
+});
+
+export const list = query({
+  args: {
+    projectId: v.optional(v.id("projects")),
+    tagId: v.optional(v.id("tags")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+
+    let contexts = await ctx.db
+      .query("contexts")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .collect();
+
+    if (args.projectId) {
+      contexts = contexts.filter((c) => c.projectId === args.projectId);
+    }
+
+    if (args.tagId) {
+      contexts = contexts.filter(
+        (c) => c.tagIds && c.tagIds.includes(args.tagId)
+      );
+    }
+
+    return contexts;
+  },
+});
+
+export const search = query({
+  args: { query: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+
+    return await ctx.db
+      .query("contexts")
+      .withSearchIndex("search_content", (q) =>
+        q.search("content", args.query).eq("userId", user._id)
+      )
+      .take(20);
+  },
+});
+
+export const get = query({
+  args: { id: v.id("contexts") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const context = await ctx.db.get(args.id);
+    if (!context || context.userId !== user._id) return null;
+
+    return context;
+  },
+});
+
+export const update = mutation({
+  args: {
+    id: v.id("contexts"),
+    title: v.optional(v.string()),
+    content: v.optional(v.string()),
+    projectId: v.optional(v.id("projects")),
+    tagIds: v.optional(v.array(v.id("tags"))),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Unauthorized");
+
+    const context = await ctx.db.get(args.id);
+    if (!context || context.userId !== user._id) {
+      throw new Error("Context not found");
+    }
+
+    await ctx.db.patch(args.id, {
+      title: args.title,
+      content: args.content,
+      projectId: args.projectId,
+      tagIds: args.tagIds,
+    });
+  },
+});
+
+export const remove = mutation({
+  args: { id: v.id("contexts") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Unauthorized");
+
+    const context = await ctx.db.get(args.id);
+    if (!context || context.userId !== user._id) {
+      throw new Error("Context not found");
+    }
+
+    await ctx.db.delete(args.id);
+  },
+});
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Unauthorized");
+
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const getFileUrl = query({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});

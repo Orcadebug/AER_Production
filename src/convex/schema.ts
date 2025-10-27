@@ -19,25 +19,52 @@ export type Role = Infer<typeof roleValidator>;
 const schema = defineSchema(
   {
     // default auth tables using convex auth.
-    ...authTables, // do not remove or modify
+    ...authTables,
 
-    // the users table is the default users table that is brought in by the authTables
     users: defineTable({
-      name: v.optional(v.string()), // name of the user. do not remove
-      image: v.optional(v.string()), // image of the user. do not remove
-      email: v.optional(v.string()), // email of the user. do not remove
-      emailVerificationTime: v.optional(v.number()), // email verification time. do not remove
-      isAnonymous: v.optional(v.boolean()), // is the user anonymous. do not remove
+      name: v.optional(v.string()),
+      image: v.optional(v.string()),
+      email: v.optional(v.string()),
+      emailVerificationTime: v.optional(v.number()),
+      isAnonymous: v.optional(v.boolean()),
+      role: v.optional(roleValidator),
+    }).index("email", ["email"]),
 
-      role: v.optional(roleValidator), // role of the user. do not remove
-    }).index("email", ["email"]), // index for the email. do not remove or modify
+    // Projects for organizing contexts
+    projects: defineTable({
+      userId: v.id("users"),
+      name: v.string(),
+      description: v.optional(v.string()),
+      color: v.optional(v.string()),
+    }).index("by_user", ["userId"]),
 
-    // add other tables here
+    // Tags for categorization
+    tags: defineTable({
+      userId: v.id("users"),
+      name: v.string(),
+      color: v.optional(v.string()),
+    }).index("by_user", ["userId"]),
 
-    // tableName: defineTable({
-    //   ...
-    //   // table fields
-    // }).index("by_field", ["field"])
+    // Main context/notes table
+    contexts: defineTable({
+      userId: v.id("users"),
+      projectId: v.optional(v.id("projects")),
+      title: v.string(),
+      content: v.string(),
+      summary: v.optional(v.string()),
+      type: v.union(v.literal("note"), v.literal("file"), v.literal("web")),
+      fileId: v.optional(v.id("_storage")),
+      fileName: v.optional(v.string()),
+      fileType: v.optional(v.string()),
+      url: v.optional(v.string()),
+      tagIds: v.optional(v.array(v.id("tags"))),
+    })
+      .index("by_user", ["userId"])
+      .index("by_project", ["projectId"])
+      .searchIndex("search_content", {
+        searchField: "content",
+        filterFields: ["userId"],
+      }),
   },
   {
     schemaValidation: false,
