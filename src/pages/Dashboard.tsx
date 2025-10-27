@@ -75,8 +75,7 @@ export default function Dashboard() {
     const projectId = formData.get("projectId") as string;
 
     try {
-      // Generate AI summary using Perplexity (client-side for now, or wait for backend)
-      // For now, use a simple approach - the backend will generate it
+      // Generate a simple summary client-side (AI will improve it later if available)
       const summary = content.length > 150 
         ? content.substring(0, 150) + "..." 
         : content;
@@ -98,7 +97,7 @@ export default function Dashboard() {
         encryptedContent,
         encryptedTitle,
         encryptedSummary,
-        plaintextContent: content, // For AI tag generation and summary (not stored)
+        plaintextContent: content, // For AI tag generation (not stored)
       });
       toast.success("Note added successfully");
       setIsAddingContext(false);

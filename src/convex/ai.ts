@@ -112,7 +112,7 @@ Provide only the summary, no additional text or formatting:`;
 });
 
 /**
- * Generate tags and update context (called as scheduled function)
+ * Generate tags and summary, then return them (not store directly)
  */
 export const generateAndUpdateTags = internalAction({
   args: {
