@@ -74,11 +74,17 @@ export default function Dashboard() {
     const projectId = formData.get("projectId") as string;
 
     try {
-      // Encrypt the content
+      // Generate brief summary (first 150 chars or first sentence)
+      const summary = content.length > 150 
+        ? content.substring(0, 150) + "..." 
+        : content;
+
+      // Encrypt the content, title, and summary
       const encryptedContent = encrypt(content);
       const encryptedTitle = encrypt(title);
+      const encryptedSummary = encrypt(summary);
 
-      if (!encryptedContent || !encryptedTitle) {
+      if (!encryptedContent || !encryptedTitle || !encryptedSummary) {
         toast.error("Encryption failed");
         return;
       }
@@ -89,6 +95,7 @@ export default function Dashboard() {
         projectId: projectId && projectId !== "none" ? projectId as Id<"projects"> : undefined,
         encryptedContent,
         encryptedTitle,
+        encryptedSummary,
         plaintextContent: content, // For AI tag generation (not stored)
       });
       toast.success("Note added successfully");
@@ -113,10 +120,12 @@ export default function Dashboard() {
 
       // Encrypt file metadata
       const fileMetadata = `File: ${file.name} (${file.type})`;
+      const fileSummary = `Uploaded file: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
       const encryptedContent = encrypt(fileMetadata);
       const encryptedTitle = encrypt(file.name);
+      const encryptedSummary = encrypt(fileSummary);
 
-      if (!encryptedContent || !encryptedTitle) {
+      if (!encryptedContent || !encryptedTitle || !encryptedSummary) {
         toast.error("Encryption failed");
         return;
       }
@@ -129,6 +138,7 @@ export default function Dashboard() {
         fileType: file.type,
         encryptedContent,
         encryptedTitle,
+        encryptedSummary,
         plaintextContent: fileMetadata, // For AI tag generation
       });
       toast.success("File uploaded successfully");
@@ -175,13 +185,14 @@ export default function Dashboard() {
     }
   };
 
-  // Decrypt context content for display
-  const getDecryptedContent = (context: any) => {
-    if (context.encryptedContent) {
-      const decrypted = decrypt(context.encryptedContent);
+  // Decrypt context summary for preview (not full content)
+  const getDecryptedSummary = (context: any) => {
+    if (context.encryptedSummary) {
+      const decrypted = decrypt(context.encryptedSummary);
       return decrypted || "[Encrypted - Unable to decrypt]";
     }
-    return "[No content]";
+    // Fallback to showing type if no summary
+    return `${context.type === "file" ? "File" : "Note"} - No preview available`;
   };
 
   return (
@@ -404,7 +415,7 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground line-clamp-3">
-                    {getDecryptedContent(context)}
+                    {getDecryptedSummary(context)}
                   </p>
                   {context.type === "file" && (
                     <Badge variant="secondary" className="mt-2">
