@@ -15,6 +15,7 @@ import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Id } from "@/convex/_generated/dataModel";
+import { extractTextFromPDF, isPDF } from "@/lib/pdfExtractor";
 
 export default function Dashboard() {
   const { isLoading, isAuthenticated, user, signOut } = useAuth();
@@ -111,6 +112,8 @@ export default function Dashboard() {
     if (!file) return;
 
     try {
+      toast.info("Processing file...");
+      
       const uploadUrl = await generateUploadUrl();
       const result = await fetch(uploadUrl, {
         method: "POST",
@@ -119,9 +122,26 @@ export default function Dashboard() {
       });
       const { storageId } = await result.json();
 
-      // Create a more descriptive summary for files
-      const fileSummary = `File uploaded: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
-      const fileContent = `Uploaded file: ${file.name}`;
+      // Extract text content from PDF files
+      let fileContent = `Uploaded file: ${file.name}`;
+      let fileSummary = `File uploaded: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+      
+      if (isPDF(file)) {
+        try {
+          const extractedText = await extractTextFromPDF(file);
+          if (extractedText && extractedText.trim().length > 0) {
+            fileContent = extractedText;
+            // Create a better summary for PDFs with content
+            const preview = extractedText.substring(0, 200).trim();
+            fileSummary = preview.length < extractedText.length 
+              ? `${preview}...` 
+              : preview;
+          }
+        } catch (error) {
+          console.error("PDF text extraction failed:", error);
+          toast.warning("Could not extract text from PDF, storing file metadata only");
+        }
+      }
       
       const encryptedContent = encrypt(fileContent);
       const encryptedTitle = encrypt(file.name);
