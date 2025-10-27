@@ -7,4 +7,7 @@ import { emailOtp } from "./auth/emailOtp";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [emailOtp, Anonymous],
+  session: {
+    totalDurationMs: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
+  },
 });
