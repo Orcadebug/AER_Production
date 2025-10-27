@@ -147,3 +147,83 @@ export const getFileUrl = query({
     return await ctx.storage.getUrl(args.storageId);
   },
 });
+
+export const listPaginated = query({
+  args: {
+    projectId: v.optional(v.id("projects")),
+    tagId: v.optional(v.id("tags")),
+    paginationOpts: v.object({
+      numItems: v.number(),
+      cursor: v.union(v.string(), v.null()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return { page: [], isDone: true, continueCursor: null };
+
+    let query = ctx.db
+      .query("contexts")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc");
+
+    const result = await query.paginate(args.paginationOpts);
+
+    let page = result.page;
+
+    if (args.projectId) {
+      page = page.filter((c) => c.projectId === args.projectId);
+    }
+
+    if (args.tagId) {
+      page = page.filter((c) => c.tagIds && c.tagIds.includes(args.tagId!));
+    }
+
+    return {
+      page,
+      isDone: result.isDone,
+      continueCursor: result.continueCursor,
+    };
+  },
+});
+
+export const exportAllContexts = query({
+  args: { format: v.union(v.literal("markdown"), v.literal("json")) },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const contexts = await ctx.db
+      .query("contexts")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .collect();
+
+    if (args.format === "json") {
+      return {
+        format: "json",
+        data: JSON.stringify(contexts, null, 2),
+        filename: `aer-export-${Date.now()}.json`,
+      };
+    }
+
+    // Markdown format
+    let markdown = `# Aer Context Export\n\nExported on: ${new Date().toLocaleString()}\n\n---\n\n`;
+    
+    for (const context of contexts) {
+      markdown += `## ${context.title}\n\n`;
+      markdown += `**Type:** ${context.type}\n\n`;
+      markdown += `**Created:** ${new Date(context._creationTime).toLocaleString()}\n\n`;
+      if (context.projectId) {
+        markdown += `**Project ID:** ${context.projectId}\n\n`;
+      }
+      markdown += `**Content:**\n\n${context.content}\n\n`;
+      markdown += `---\n\n`;
+    }
+
+    return {
+      format: "markdown",
+      data: markdown,
+      filename: `aer-export-${Date.now()}.md`,
+    };
+  },
+});

@@ -24,10 +24,16 @@ export default function Dashboard() {
   const [isAddingContext, setIsAddingContext] = useState(false);
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [isAddingTag, setIsAddingTag] = useState(false);
+  const [paginationCursor, setPaginationCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
 
-  const contexts = useQuery(
-    api.contexts.list,
-    selectedProject !== "all" ? { projectId: selectedProject } : selectedTag !== "all" ? { tagId: selectedTag } : {}
+  const contextsResult = useQuery(
+    api.contexts.listPaginated,
+    selectedProject !== "all"
+      ? { projectId: selectedProject, paginationOpts: { numItems: 20, cursor: paginationCursor } }
+      : selectedTag !== "all"
+      ? { tagId: selectedTag, paginationOpts: { numItems: 20, cursor: paginationCursor } }
+      : { paginationOpts: { numItems: 20, cursor: paginationCursor } }
   );
   const searchResults = useQuery(api.contexts.search, searchQuery ? { query: searchQuery } : "skip");
   const projects = useQuery(api.projects.list);
@@ -39,7 +45,7 @@ export default function Dashboard() {
   const deleteContext = useMutation(api.contexts.remove);
   const generateUploadUrl = useMutation(api.contexts.generateUploadUrl);
 
-  const displayContexts = searchQuery ? searchResults : contexts;
+  const displayContexts = searchQuery ? searchResults : contextsResult?.page;
 
   if (isLoading) {
     return (
@@ -156,6 +162,9 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">{user?.email}</span>
+            <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
+              Settings
+            </Button>
             <Button variant="outline" size="sm" onClick={handleSignOut}>
               <LogOut className="h-4 w-4 mr-2" />
               Sign Out
@@ -354,6 +363,19 @@ export default function Dashboard() {
             </motion.div>
           ))}
         </div>
+
+        {/* Load More Button */}
+        {!searchQuery && contextsResult && !contextsResult.isDone && (
+          <div className="flex justify-center mt-8">
+            <Button
+              variant="outline"
+              onClick={() => setPaginationCursor(contextsResult.continueCursor)}
+              disabled={!hasMore}
+            >
+              Load More
+            </Button>
+          </div>
+        )}
 
         {displayContexts?.length === 0 && (
           <div className="text-center py-12">

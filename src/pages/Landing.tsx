@@ -60,7 +60,7 @@ export default function Landing() {
               Start Free
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button size="lg" variant="outline" className="text-lg px-8">
+            <Button size="lg" variant="outline" className="text-lg px-8" onClick={() => navigate("/terms")}>
               Learn More
             </Button>
           </div>
@@ -156,8 +156,16 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="border-t py-8">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground space-y-2">
           <p>© 2024 Aer. Built with modern cloud-native technology.</p>
+          <div className="flex justify-center gap-4">
+            <button onClick={() => navigate("/terms")} className="hover:text-primary underline">
+              Terms of Service
+            </button>
+            <button onClick={() => navigate("/privacy")} className="hover:text-primary underline">
+              Privacy Policy
+            </button>
+          </div>
         </div>
       </footer>
     </div>
