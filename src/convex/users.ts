@@ -1,5 +1,6 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { query, QueryCtx } from "./_generated/server";
+import { internalQuery } from "./_generated/server";
 
 /**
  * Get the current signed in user. Returns null if the user is not signed in.
@@ -31,3 +32,10 @@ export const getCurrentUser = async (ctx: QueryCtx) => {
   }
   return await ctx.db.get(userId);
 };
+
+export const getCurrentUserInternal = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await getCurrentUser(ctx);
+  },
+});

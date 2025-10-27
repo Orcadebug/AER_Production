@@ -72,6 +72,8 @@
     "tailwind-merge": "^3.3.0",
     "tailwindcss": "^4.1.8",
     "three": "^0.177.0",
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1",
     "vaul": "^1.1.2",
     "zod": "^3.25.46"
   },

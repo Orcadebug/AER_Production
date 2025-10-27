@@ -1,6 +1,12 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getCurrentUser } from "./users";
+import { internal } from "./_generated/api";
+
+const encryptedDataValidator = v.object({
+  ciphertext: v.string(),
+  nonce: v.string(),
+});
 
 export const create = mutation({
   args: {
@@ -13,10 +19,23 @@ export const create = mutation({
     fileName: v.optional(v.string()),
     fileType: v.optional(v.string()),
     url: v.optional(v.string()),
+    // Encrypted fields
+    encryptedContent: encryptedDataValidator,
+    encryptedTitle: v.optional(encryptedDataValidator),
+    encryptedSummary: v.optional(encryptedDataValidator),
+    encryptedMetadata: v.optional(encryptedDataValidator),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) throw new Error("Unauthorized");
+
+    // Log audit event
+    await ctx.scheduler.runAfter(0, internal.audit.logAuditEvent, {
+      userId: user._id,
+      action: "CREATE_CONTEXT",
+      resourceType: "context",
+      success: true,
+    });
 
     return await ctx.db.insert("contexts", {
       userId: user._id,
@@ -29,6 +48,10 @@ export const create = mutation({
       fileName: args.fileName,
       fileType: args.fileType,
       url: args.url,
+      encryptedContent: args.encryptedContent,
+      encryptedTitle: args.encryptedTitle,
+      encryptedSummary: args.encryptedSummary,
+      encryptedMetadata: args.encryptedMetadata,
     });
   },
 });
@@ -97,6 +120,10 @@ export const update = mutation({
     content: v.optional(v.string()),
     projectId: v.optional(v.id("projects")),
     tagIds: v.optional(v.array(v.id("tags"))),
+    encryptedContent: v.optional(encryptedDataValidator),
+    encryptedTitle: v.optional(encryptedDataValidator),
+    encryptedSummary: v.optional(encryptedDataValidator),
+    encryptedMetadata: v.optional(encryptedDataValidator),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -112,6 +139,19 @@ export const update = mutation({
       content: args.content,
       projectId: args.projectId,
       tagIds: args.tagIds,
+      encryptedContent: args.encryptedContent,
+      encryptedTitle: args.encryptedTitle,
+      encryptedSummary: args.encryptedSummary,
+      encryptedMetadata: args.encryptedMetadata,
+    });
+
+    // Log audit event
+    await ctx.scheduler.runAfter(0, internal.audit.logAuditEvent, {
+      userId: user._id,
+      action: "UPDATE_CONTEXT",
+      resourceType: "context",
+      resourceId: args.id,
+      success: true,
     });
   },
 });
