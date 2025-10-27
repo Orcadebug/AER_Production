@@ -55,7 +55,7 @@ export const create = mutation({
     });
 
     // Schedule AI tag generation in background (non-blocking)
-    if (args.plaintextContent && process.env.OPENAI_API_KEY) {
+    if (args.plaintextContent && process.env.PERPLEXITY_API_KEY) {
       await ctx.scheduler.runAfter(
         0,
         internal.ai.generateAndUpdateTags,
@@ -149,27 +149,14 @@ export const semanticSearch = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    // If no OpenAI key, fall back to basic search
-    if (!process.env.OPENAI_API_KEY) {
+    // If no Perplexity key, fall back to basic search
+    if (!process.env.PERPLEXITY_API_KEY) {
       return allContexts
         .filter((c) => 
           c.title.toLowerCase().includes(args.query.toLowerCase()) ||
           c.tags?.some((tag) => tag.includes(args.query.toLowerCase()))
         )
         .slice(0, 20);
-    }
-
-    // Prepare data for AI ranking
-    const contextsWithTags = allContexts
-      .filter((c) => c.tags && c.tags.length > 0)
-      .map((c) => ({
-        contextId: c._id,
-        tags: c.tags || [],
-        title: c.title,
-      }));
-
-    if (contextsWithTags.length === 0) {
-      return [];
     }
 
     // Basic tag-based search (AI semantic search would require an action)

@@ -20,6 +20,9 @@ importers:
       '@jridgewell/trace-mapping':
         specifier: ^0.3.25
         version: 0.3.25
+      '@perplexity-ai/perplexity_ai':
+        specifier: ^0.12.0
+        version: 0.12.0
       '@radix-ui/react-accordion':
         specifier: ^1.2.11
         version: 1.2.11(@types/react-dom@19.1.5(@types/react@19.1.6))(@types/react@19.1.6)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -991,6 +994,9 @@ packages:
 
   '@panva/hkdf@1.2.1':
     resolution: {integrity: sha512-6oclG6Y3PiDFcoyk8srjLfVKyMfVCKJ27JwNPViuXziFpmdz+MZnZN/aKY0JGXgYuO/VghU0jcOAZgWXZ1Dmrw==}
+
+  '@perplexity-ai/perplexity_ai@0.12.0':
+    resolution: {integrity: sha512-WgU3lW1h8gj8vfQ/jEWv82Itht8od3Phk/W+iMANDSNqlm0YI8t92WCCyB7gVsqLBTfFCbsPHfSZylqKGRTG1w==}
 
   '@radix-ui/number@1.1.1':
     resolution: {integrity: sha512-MkKCwxlXTgz6CFoJx3pCwn07GKp36+aZyu/u2Ln2VrA5DcdyCZkASEDBTd8x5whTQQL5CiYf4prXKLcgQdv29g==}
@@ -3906,6 +3912,8 @@ snapshots:
   '@oslojs/encoding@1.1.0': {}
 
   '@panva/hkdf@1.2.1': {}
+
+  '@perplexity-ai/perplexity_ai@0.12.0': {}
 
   '@radix-ui/number@1.1.1': {}
 

@@ -3,15 +3,15 @@
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import OpenAI from "openai";
+import Perplexity from "@perplexity-ai/perplexity_ai";
 
 // Lazy initialization to avoid requiring API key at module load time
-function getOpenAI() {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY environment variable is not set");
+function getPerplexity() {
+  if (!process.env.PERPLEXITY_API_KEY) {
+    throw new Error("PERPLEXITY_API_KEY environment variable is not set");
   }
-  return new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+  return new Perplexity({
+    apiKey: process.env.PERPLEXITY_API_KEY,
   });
 }
 
@@ -49,15 +49,16 @@ Example: technology, programming, javascript, react, state management, custom ho
 
 Tags:`;
 
-      const openai = getOpenAI();
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+      const perplexity = getPerplexity();
+      const response = await perplexity.chat.completions.create({
+        model: "sonar",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 150,
       });
 
-      const tagsText = response.choices[0]?.message?.content?.trim() || "";
+      const content = response.choices[0]?.message?.content;
+      const tagsText = typeof content === "string" ? content.trim() : "";
       const tags = tagsText
         .split(",")
         .map((tag: string) => tag.trim().toLowerCase())
@@ -142,15 +143,16 @@ If an item is completely irrelevant, exclude it.
 
 Ranking:`;
 
-      const openai = getOpenAI();
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+      const perplexity = getPerplexity();
+      const response = await perplexity.chat.completions.create({
+        model: "sonar",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.2,
         max_tokens: 100,
       });
 
-      const rankingText = response.choices[0]?.message?.content?.trim() || "";
+      const content = response.choices[0]?.message?.content;
+      const rankingText = typeof content === "string" ? content.trim() : "";
       const rankings = rankingText
         .split(",")
         .map((n: string) => parseInt(n.trim()))
