@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "./use-auth";
 import {
-  generateSymmetricKey,
+  deriveKeyFromUserId,
   storeEncryptionKey,
   getEncryptionKey,
   clearEncryptionKey,
@@ -28,14 +28,17 @@ export function useEncryption() {
     // Try to get existing key from session storage
     let key = getEncryptionKey(user._id);
 
-    // If no key exists, generate a new one
+    // If no key exists, derive one from user ID
     if (!key) {
-      key = generateSymmetricKey();
-      storeEncryptionKey(user._id, key);
+      deriveKeyFromUserId(user._id).then((derivedKey) => {
+        storeEncryptionKey(user._id, derivedKey);
+        setEncryptionKey(derivedKey);
+        setIsReady(true);
+      });
+    } else {
+      setEncryptionKey(key);
+      setIsReady(true);
     }
-
-    setEncryptionKey(key);
-    setIsReady(true);
   }, [isAuthenticated, user]);
 
   const encrypt = (data: string): EncryptedData | null => {

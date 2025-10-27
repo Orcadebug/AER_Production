@@ -28,6 +28,23 @@ export function generateKeyPair(): KeyPair {
 }
 
 /**
+ * Derive a deterministic encryption key from user ID
+ * This ensures the same user always gets the same encryption key
+ */
+export async function deriveKeyFromUserId(userId: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(userId);
+  
+  // Use Web Crypto API to derive a consistent key
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = new Uint8Array(hashBuffer);
+  
+  // Take first 32 bytes for NaCl secretbox key
+  const key = hashArray.slice(0, nacl.secretbox.keyLength);
+  return encodeBase64(key);
+}
+
+/**
  * Derive a symmetric key from password (for key encryption)
  * In production, use a proper KDF like Argon2 or PBKDF2
  */
