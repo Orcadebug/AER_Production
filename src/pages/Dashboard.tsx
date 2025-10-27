@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useEncryption } from "@/hooks/use-encryption";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
-import { FileText, Loader2, LogOut, Plus, Search, Upload, X, FolderOpen, Tag as TagIcon, Lock } from "lucide-react";
+import { FileText, Loader2, LogOut, Plus, Search, Upload, X, FolderOpen, Tag as TagIcon, Lock, Copy, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -27,6 +27,7 @@ export default function Dashboard() {
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [paginationCursor, setPaginationCursor] = useState<string | null>(null);
+  const [selectedContext, setSelectedContext] = useState<any | null>(null);
 
   const contextsResult = useQuery(
     api.contexts.listPaginated,
@@ -185,6 +186,24 @@ export default function Dashboard() {
     }
   };
 
+  // Decrypt full context content
+  const getDecryptedContent = (context: any) => {
+    if (context.encryptedContent) {
+      const decrypted = decrypt(context.encryptedContent);
+      return decrypted || "[Unable to decrypt content]";
+    }
+    return "No content available";
+  };
+
+  // Decrypt context title
+  const getDecryptedTitle = (context: any) => {
+    if (context.encryptedTitle) {
+      const decrypted = decrypt(context.encryptedTitle);
+      return decrypted || context.title;
+    }
+    return context.title;
+  };
+
   // Decrypt context summary for preview (not full content)
   const getDecryptedSummary = (context: any) => {
     if (context.encryptedSummary) {
@@ -193,6 +212,15 @@ export default function Dashboard() {
     }
     // Fallback to showing type if no summary
     return `${context.type === "file" ? "File" : "Note"} - No preview available`;
+  };
+
+  const handleCopySummary = (context: any) => {
+    const title = getDecryptedTitle(context);
+    const content = getDecryptedContent(context);
+    const summary = `# ${title}\n\nType: ${context.type}\nCreated: ${new Date(context._creationTime).toLocaleString()}\n${context.tags && context.tags.length > 0 ? `Tags: ${context.tags.join(", ")}\n` : ""}\n## Content\n\n${content}`;
+    
+    navigator.clipboard.writeText(summary);
+    toast.success("Context copied to clipboard");
   };
 
   return (
@@ -377,7 +405,7 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
             >
-              <Card className="hover:border-[#8BA888] transition-colors">
+              <Card className="hover:border-[#8BA888] transition-colors cursor-pointer" onClick={() => setSelectedContext(context)}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -407,7 +435,10 @@ export default function Dashboard() {
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6"
-                      onClick={() => handleDeleteContext(context._id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteContext(context._id);
+                      }}
                     >
                       <X className="h-3 w-3" />
                     </Button>
@@ -448,6 +479,75 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Context Detail Dialog */}
+      <Dialog open={!!selectedContext} onOpenChange={(open) => !open && setSelectedContext(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          {selectedContext && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {selectedContext.type === "file" && <FileText className="h-5 w-5" />}
+                  <Lock className="h-4 w-4 text-muted-foreground" />
+                  {getDecryptedTitle(selectedContext)}
+                </DialogTitle>
+                <DialogDescription>
+                  Created on {new Date(selectedContext._creationTime).toLocaleString()}
+                  {selectedContext.type === "file" && ` • ${selectedContext.fileType}`}
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                {selectedContext.tags && selectedContext.tags.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Tags</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedContext.tags.map((tag: string, idx: number) => (
+                        <Badge key={idx} variant="secondary">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Content</h4>
+                  <div className="bg-muted p-4 rounded-lg whitespace-pre-wrap text-sm">
+                    {getDecryptedContent(selectedContext)}
+                  </div>
+                </div>
+
+                {selectedContext.type === "file" && selectedContext.fileId && (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">File Information</h4>
+                    <div className="text-sm text-muted-foreground">
+                      <p>Filename: {selectedContext.fileName}</p>
+                      <p>Type: {selectedContext.fileType}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => handleCopySummary(selectedContext)}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy for LLM
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedContext(null)}
+                >
+                  Close
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
