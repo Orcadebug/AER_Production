@@ -279,15 +279,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           )}
 
           <div className="py-4 px-6 text-xs text-center text-muted-foreground bg-muted border-t rounded-b-lg">
-            Secured by{" "}
-            <a
-              href={APP_CONFIG.authProvider.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-primary transition-colors"
-            >
-              {APP_CONFIG.authProvider.name}
-            </a>
+            Secured by {APP_CONFIG.authProvider.name}
           </div>
         </Card>
         </div>
