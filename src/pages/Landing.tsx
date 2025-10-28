@@ -38,7 +38,7 @@ export default function Landing() {
         >
           <div className="inline-flex items-center gap-2 bg-[#8BA888]/10 border border-[#8BA888]/20 rounded-full px-4 py-2 mb-8">
             <Zap className="h-4 w-4 text-[#8BA888]" />
-            <span className="text-sm font-medium text-[#8BA888]">AI-Powered Context OS</span>
+            <span className="text-sm font-medium text-[#8BA888]">AI-Powered Context OS with MCP Integration</span>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
@@ -48,7 +48,8 @@ export default function Landing() {
           </h1>
           
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Capture, organize, and retrieve everything that matters. Aer uses AI to understand your context and surface insights when you need them.
+            Connect any AI model—ChatGPT, Claude, Gemini—to your personal context. 
+            Ask about your life, notes, or data, and get accurate answers powered by your encrypted knowledge base.
           </p>
           
           <div className="flex gap-4 justify-center flex-wrap">
@@ -84,33 +85,33 @@ export default function Landing() {
           {[
             {
               icon: Brain,
+              title: "MCP Integration",
+              description: "Connect any AI model to your context. ChatGPT, Claude, Gemini—they all get instant access to your personal knowledge base.",
+            },
+            {
+              icon: Search,
               title: "AI-Powered Search",
-              description: "Semantic search understands what you mean, not just what you type. Find anything instantly.",
+              description: "Semantic search understands what you mean, not just what you type. Find anything instantly across all your contexts.",
             },
             {
               icon: FileText,
               title: "Universal Capture",
-              description: "Notes, files, web content—capture everything in one place. PDFs, docs, and more supported.",
+              description: "Notes, files, web content—capture everything in one place. PDFs, docs, and more supported with automatic tagging.",
             },
             {
               icon: Cloud,
               title: "Cloud Native",
-              description: "Real-time sync across all devices. Your context is always up to date, everywhere.",
-            },
-            {
-              icon: Search,
-              title: "Smart Organization",
-              description: "Projects and tags keep everything organized. AI helps categorize and summarize automatically.",
+              description: "Real-time sync across all devices. Your context is always up to date, everywhere, accessible to any connected AI.",
             },
             {
               icon: Shield,
               title: "Privacy First",
-              description: "Your data is encrypted and partitioned. Export or delete anytime. Full compliance ready.",
+              description: "End-to-end encrypted. You control what AI models can access. Export or delete anytime. Full compliance ready.",
             },
             {
               icon: Zap,
               title: "Lightning Fast",
-              description: "Built on modern serverless architecture. Scales effortlessly from 1 to millions of users.",
+              description: "Built on modern serverless architecture. Scales effortlessly from 1 to millions of users with instant AI retrieval.",
             },
           ].map((feature, index) => (
             <motion.div
@@ -141,7 +142,7 @@ export default function Landing() {
         >
           <h2 className="text-4xl font-bold tracking-tight mb-4">Ready to Get Started?</h2>
           <p className="text-xl text-muted-foreground mb-8">
-            Join thousands organizing their digital life with Aer
+            Give any AI model access to your personal context—securely and privately
           </p>
           <Button
             size="lg"
