@@ -1,6 +1,7 @@
 import { httpRouter } from "convex/server";
 import { auth } from "./auth";
 import { uploadContext, batchUploadContexts } from "./httpApi";
+import { mcpEndpoint } from "./mcp/index";
 
 const http = httpRouter();
 
@@ -17,6 +18,13 @@ http.route({
   path: "/api/context/batch-upload",
   method: "POST",
   handler: batchUploadContexts,
+});
+
+// MCP endpoint for AI assistants
+http.route({
+  path: "/api/mcp",
+  method: "POST",
+  handler: mcpEndpoint,
 });
 
 export default http;
