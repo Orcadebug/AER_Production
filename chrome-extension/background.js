@@ -1,10 +1,10 @@
+// Background service worker for Aer Chrome Extension
 import { ConvexHttpClient } from "convex/browser";
 import nacl from "tweetnacl";
 import { encodeBase64, decodeBase64 } from "tweetnacl-util";
 
-const CONVEX_URL = "https://your-deployment.convex.cloud"; // Replace with your Convex URL
-
-// Initialize Convex client
+// Initialize Convex client - REPLACE WITH YOUR ACTUAL CONVEX URL
+const CONVEX_URL = "https://your-deployment-url.convex.cloud";
 const convex = new ConvexHttpClient(CONVEX_URL);
 
 // Derive encryption key from user ID (same as web app)
@@ -17,7 +17,7 @@ async function deriveKeyFromUserId(userId) {
   return encodeBase64(key);
 }
 
-// Encrypt data (same as web app)
+// Encrypt data using TweetNaCl
 function encryptData(data, secretKey) {
   const encoder = new TextEncoder();
   const messageUint8 = encoder.encode(data);
@@ -27,66 +27,56 @@ function encryptData(data, secretKey) {
   
   return {
     ciphertext: encodeBase64(encrypted),
-    nonce: encodeBase64(nonce),
+    nonce: encodeBase64(nonce)
   };
 }
 
-// Get current user from Convex
-async function getCurrentUser() {
-  try {
-    const user = await convex.query("users:currentUser", {});
-    return user;
-  } catch (error) {
-    console.error("Failed to get current user:", error);
-    return null;
-  }
-}
-
-// Summarize and save webpage
-async function summarizeWebpage(pageData) {
-  try {
-    // 1. Get authenticated user
-    const user = await getCurrentUser();
-    if (!user) {
-      throw new Error("User not authenticated. Please log in via the web app first.");
-    }
-
-    // 2. Derive encryption key from user ID
-    const encryptionKey = await deriveKeyFromUserId(user._id);
-
-    // 3. Extract and prepare content
-    const { title, content, url } = pageData;
-    const summary = content.length > 150 ? content.substring(0, 150) + "..." : content;
-
-    // 4. Encrypt all sensitive data
-    const encryptedContent = encryptData(content, encryptionKey);
-    const encryptedTitle = encryptData(title, encryptionKey);
-    const encryptedSummary = encryptData(summary, encryptionKey);
-
-    // 5. Send to Convex database
-    const contextId = await convex.mutation("contexts:create", {
-      title: title.substring(0, 50), // Truncated for search
-      type: "web",
-      url: url,
-      encryptedContent,
-      encryptedTitle,
-      encryptedSummary,
-      plaintextContent: content, // For AI tag generation (not stored)
-    });
-
-    return { success: true, contextId };
-  } catch (error) {
-    console.error("Failed to save webpage:", error);
-    return { success: false, error: error.message };
-  }
-}
-
-// Listen for messages from popup or content script
+// Listen for messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "summarize") {
-    summarizeWebpage(request.data)
-      .then(sendResponse)
+  if (request.action === "captureAndSave") {
+    handleCapture(request.data)
+      .then(result => sendResponse({ success: true, result }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true; // Keep channel open for async response
   }
 });
+
+async function handleCapture(pageData) {
+  try {
+    // Get current user from Convex
+    const user = await convex.query("users:currentUser", {});
+    
+    if (!user) {
+      throw new Error("Not authenticated. Please log in to the web app first.");
+    }
+
+    // Derive encryption key from user ID
+    const encryptionKey = await deriveKeyFromUserId(user._id);
+
+    // Prepare content
+    const content = `URL: ${pageData.url}\n\n${pageData.content}`;
+    const title = pageData.title || "Untitled Page";
+    const summary = content.substring(0, 200) + "...";
+
+    // Encrypt data
+    const encryptedContent = encryptData(content, encryptionKey);
+    const encryptedTitle = encryptData(title, encryptionKey);
+    const encryptedSummary = encryptData(summary, encryptionKey);
+
+    // Save to Convex
+    const contextId = await convex.mutation("contexts:create", {
+      title: title.substring(0, 50),
+      type: "web",
+      url: pageData.url,
+      encryptedContent,
+      encryptedTitle,
+      encryptedSummary,
+      plaintextContent: content // For AI tag generation
+    });
+
+    return { contextId, title };
+  } catch (error) {
+    console.error("Error capturing content:", error);
+    throw error;
+  }
+}

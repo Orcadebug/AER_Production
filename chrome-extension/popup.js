@@ -1,36 +1,43 @@
-document.getElementById('summarizeBtn').addEventListener('click', async () => {
-  const button = document.getElementById('summarizeBtn');
+document.getElementById('captureBtn').addEventListener('click', async () => {
+  const button = document.getElementById('captureBtn');
   const status = document.getElementById('status');
   
-  // Disable button
-  button.disabled = true;
-  button.textContent = '⏳ Processing...';
-  status.textContent = '';
-  
   try {
-    // Get current tab
+    // Disable button and show loading
+    button.disabled = true;
+    status.className = 'status loading';
+    status.textContent = 'Capturing page content...';
+    
+    // Get active tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     
-    // Extract page content from content script
-    const pageData = await chrome.tabs.sendMessage(tab.id, { action: "getPageContent" });
+    // Extract content from page
+    const pageData = await chrome.tabs.sendMessage(tab.id, { action: 'extractContent' });
+    
+    status.textContent = 'Encrypting and saving...';
     
     // Send to background script to save
-    const result = await chrome.runtime.sendMessage({
-      action: "summarize",
+    const response = await chrome.runtime.sendMessage({
+      action: 'captureAndSave',
       data: pageData
     });
     
-    if (result.success) {
+    if (response.success) {
       status.className = 'status success';
-      status.textContent = '✅ Saved to Aer successfully!';
+      status.textContent = `✓ Saved: ${response.result.title}`;
+      
+      // Reset after 2 seconds
+      setTimeout(() => {
+        status.className = 'status';
+        status.textContent = '';
+        button.disabled = false;
+      }, 2000);
     } else {
-      throw new Error(result.error || 'Failed to save');
+      throw new Error(response.error);
     }
   } catch (error) {
     status.className = 'status error';
-    status.textContent = `❌ Error: ${error.message}`;
-  } finally {
+    status.textContent = `Error: ${error.message}`;
     button.disabled = false;
-    button.textContent = '📝 Summarize & Save';
   }
 });

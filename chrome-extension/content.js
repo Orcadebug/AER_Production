@@ -1,24 +1,31 @@
-// Extract page content
-function extractPageContent() {
-  // Get main content (you can customize this selector)
-  const article = document.querySelector('article') || 
-                  document.querySelector('main') || 
-                  document.body;
-  
-  // Extract text content
-  const content = article.innerText || article.textContent || "";
-  
-  return {
-    title: document.title,
-    content: content.substring(0, 5000), // Limit to 5000 chars
-    url: window.location.href
-  };
-}
+// Content script to extract page content
+(function() {
+  // Listen for messages from popup
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "extractContent") {
+      const pageData = {
+        title: document.title,
+        url: window.location.href,
+        content: extractMainContent()
+      };
+      sendResponse(pageData);
+    }
+    return true;
+  });
 
-// Listen for messages from popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "getPageContent") {
-    const pageData = extractPageContent();
-    sendResponse(pageData);
+  function extractMainContent() {
+    // Remove script, style, and other non-content elements
+    const clone = document.body.cloneNode(true);
+    const unwanted = clone.querySelectorAll('script, style, nav, header, footer, iframe, noscript');
+    unwanted.forEach(el => el.remove());
+
+    // Get text content
+    let text = clone.innerText || clone.textContent || '';
+    
+    // Clean up whitespace
+    text = text.replace(/\s+/g, ' ').trim();
+    
+    // Limit to 5000 characters
+    return text.substring(0, 5000);
   }
-});
+})();

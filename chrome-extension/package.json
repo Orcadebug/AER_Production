@@ -1,8 +1,10 @@
 {
   "name": "aer-chrome-extension",
   "version": "1.0.0",
-  "description": "Chrome extension for Aer Context OS",
-  "type": "module",
+  "description": "Chrome extension for Aer context capture",
+  "scripts": {
+    "build": "webpack background.js --mode production --output-path . --output-filename background.bundle.js"
+  },
   "dependencies": {
     "convex": "^1.27.0",
     "tweetnacl": "^1.0.3",
@@ -11,8 +13,5 @@
   "devDependencies": {
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4"
-  },
-  "scripts": {
-    "build": "webpack --mode production"
   }
 }
