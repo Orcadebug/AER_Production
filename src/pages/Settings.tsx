@@ -4,7 +4,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
-import { Loader2, LogOut, Trash2, Download, FileText, Database } from "lucide-react";
+import { Loader2, LogOut, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -15,8 +15,6 @@ export default function Settings() {
   
   const userStats = useQuery(api.admin.getUserStats);
   const deleteAllData = useMutation(api.admin.deleteAllUserData);
-  const exportData = useQuery(api.contexts.exportAllContexts, { format: "markdown" });
-  const exportDataJson = useQuery(api.contexts.exportAllContexts, { format: "json" });
 
   if (isLoading) {
     return (
@@ -46,22 +44,6 @@ export default function Settings() {
     } catch (error) {
       toast.error("Failed to delete data");
     }
-  };
-
-  const handleExport = (format: "markdown" | "json") => {
-    const data = format === "markdown" ? exportData : exportDataJson;
-    if (!data) return;
-
-    const blob = new Blob([data.data], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = data.filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success(`Exported as ${format.toUpperCase()}`);
   };
 
   return (
@@ -116,34 +98,6 @@ export default function Settings() {
                   </div>
                 </>
               )}
-            </CardContent>
-          </Card>
-
-          {/* Export Data */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Export Your Data</CardTitle>
-              <CardDescription>Download all your contexts and information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => handleExport("markdown")}
-                disabled={!exportData}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Export as Markdown
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => handleExport("json")}
-                disabled={!exportDataJson}
-              >
-                <Database className="h-4 w-4 mr-2" />
-                Export as JSON
-              </Button>
             </CardContent>
           </Card>
 
