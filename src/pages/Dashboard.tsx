@@ -235,7 +235,10 @@ export default function Dashboard() {
   const getDecryptedContent = (context: any) => {
     if (context.encryptedContent) {
       const decrypted = decrypt(context.encryptedContent);
-      return decrypted || "[Unable to decrypt content]";
+      if (!decrypted) {
+        return "[This content was encrypted with a previous session key and cannot be decrypted. Please delete this context and create it again with the new encryption system.]";
+      }
+      return decrypted;
     }
     return "No content available";
   };
@@ -244,7 +247,10 @@ export default function Dashboard() {
   const getDecryptedTitle = (context: any) => {
     if (context.encryptedTitle) {
       const decrypted = decrypt(context.encryptedTitle);
-      return decrypted || context.title;
+      if (!decrypted) {
+        return `${context.title} [Old Encryption - Delete Me]`;
+      }
+      return decrypted;
     }
     return context.title;
   };
@@ -253,7 +259,10 @@ export default function Dashboard() {
   const getDecryptedSummary = (context: any) => {
     if (context.encryptedSummary) {
       const decrypted = decrypt(context.encryptedSummary);
-      return decrypted || "[Encrypted - Unable to decrypt]";
+      if (!decrypted) {
+        return "[Encrypted with old key - please delete and re-create this context]";
+      }
+      return decrypted;
     }
     // Fallback to showing type if no summary
     return `${context.type === "file" ? "File" : "Note"} - No preview available`;
