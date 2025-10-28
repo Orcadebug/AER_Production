@@ -4,14 +4,17 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
-import { Loader2, LogOut, Trash2 } from "lucide-react";
+import { Loader2, LogOut, Trash2, Copy, Key, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
 
 export default function Settings() {
   const { isLoading, isAuthenticated, user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [tokenCopied, setTokenCopied] = useState(false);
   
   const userStats = useQuery(api.admin.getUserStats);
   const deleteAllData = useMutation(api.admin.deleteAllUserData);
@@ -44,6 +47,17 @@ export default function Settings() {
     } catch (error) {
       toast.error("Failed to delete data");
     }
+  };
+
+  // Generate a simple auth token based on user ID
+  // In production, this should be a proper JWT or session token
+  const authToken = user?._id ? `aer_${user._id}` : "";
+
+  const handleCopyToken = () => {
+    navigator.clipboard.writeText(authToken);
+    setTokenCopied(true);
+    toast.success("Token copied to clipboard");
+    setTimeout(() => setTokenCopied(false), 2000);
   };
 
   return (
@@ -98,6 +112,57 @@ export default function Settings() {
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Connections */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                Connections
+              </CardTitle>
+              <CardDescription>
+                Use this token to connect external tools like the Chrome extension
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Authentication Token</label>
+                <div className="flex gap-2">
+                  <Input
+                    value={authToken}
+                    readOnly
+                    className="font-mono text-sm"
+                    type="password"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleCopyToken}
+                    className="shrink-0"
+                  >
+                    {tokenCopied ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Keep this token secure. It provides access to your encrypted contexts.
+                </p>
+              </div>
+
+              <div className="bg-muted p-4 rounded-lg space-y-2">
+                <h4 className="text-sm font-semibold">How to use:</h4>
+                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                  <li>Copy the token above</li>
+                  <li>Open the Aer Chrome extension</li>
+                  <li>Click "Setup Authentication"</li>
+                  <li>Paste your token and save</li>
+                </ol>
+              </div>
             </CardContent>
           </Card>
 
