@@ -164,13 +164,17 @@ export default function Settings() {
               </div>
 
               <div className="bg-muted p-4 rounded-lg space-y-2">
-                <h4 className="text-sm font-semibold">How to use:</h4>
+                <h4 className="text-sm font-semibold">How to use with Chrome Extension:</h4>
                 <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
                   <li>Copy the token above</li>
-                  <li>Open the Aer Chrome extension</li>
-                  <li>Click "Setup Authentication"</li>
-                  <li>Paste your token and save</li>
+                  <li>Install the Aer Chrome extension</li>
+                  <li>Click the extension icon and select "Setup Authentication"</li>
+                  <li>Paste your token and click "Save"</li>
+                  <li>Once connected, you can capture web content directly to your Aer account</li>
                 </ol>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Note: The token format is <code className="bg-background px-1 rounded">aer_[your-user-id]</code>
+                </p>
               </div>
             </CardContent>
           </Card>

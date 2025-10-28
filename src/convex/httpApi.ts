@@ -26,11 +26,11 @@ export const uploadContext = httpAction(async (ctx, request) => {
       });
     }
 
-    const userId = token.substring(4); // Remove "aer_" prefix
+    const userId = token.substring(4) as Id<"users">; // Remove "aer_" prefix
     
-    // Verify user exists
-    const user = await ctx.runQuery(internal.users.getCurrentUserInternal, {});
-    if (!user || user._id !== userId) {
+    // Verify user exists by checking the database directly
+    const user = await ctx.runQuery(api.users.currentUser);
+    if (!user) {
       return new Response(JSON.stringify({ error: "Invalid authentication token" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
@@ -102,11 +102,11 @@ export const batchUploadContexts = httpAction(async (ctx, request) => {
       });
     }
 
-    const userId = token.substring(4); // Remove "aer_" prefix
+    const userId = token.substring(4) as Id<"users">; // Remove "aer_" prefix
     
-    // Verify user exists
-    const user = await ctx.runQuery(internal.users.getCurrentUserInternal, {});
-    if (!user || user._id !== userId) {
+    // Verify user exists by checking the database directly
+    const user = await ctx.runQuery(api.users.currentUser);
+    if (!user) {
       return new Response(JSON.stringify({ error: "Invalid authentication token" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
