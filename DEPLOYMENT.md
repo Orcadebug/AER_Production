@@ -1,12 +1,12 @@
-# Aer Production Deployment Guide
+# Deployment Guide
 
 ## Prerequisites
-- GitHub account
-- Vercel account (free tier works)
-- Convex account (free tier works)
-- Resend account (optional, for custom email branding)
 
-## Step 1: Convex Production Deployment
+1. **Convex Account**: Sign up at [convex.dev](https://convex.dev)
+2. **Perplexity AI API Key**: Get from [perplexity.ai](https://www.perplexity.ai/settings/api)
+3. **Vercel Account** (optional): For frontend hosting at [vercel.com](https://vercel.com)
+4. **Resend Account** (optional): For email service at [resend.com](https://resend.com)
 
-1. Install Convex CLI globally (if not already):
-   
+## Step 1: Set Up Convex Backend
+
+### 1.1 Install Convex CLI
