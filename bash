@@ -1,2 +1,2 @@
-npx convex env set AUTH_GOOGLE_ID <your-google-client-id>
-npx convex env set AUTH_GOOGLE_SECRET <your-google-client-secret>
+npx convex env set RESEND_API_KEY "your-api-key-here"
+npx convex env set RESEND_FROM_EMAIL "onboarding@yourdomain.com"

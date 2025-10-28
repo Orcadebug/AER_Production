@@ -1,5 +1,5 @@
 import { Email } from "@convex-dev/auth/providers/Email";
-import axios from "axios";
+import { Resend } from "resend";
 import { alphabet, generateRandomString } from "oslo/crypto";
 
 export const emailOtp = Email({
@@ -11,21 +11,33 @@ export const emailOtp = Email({
   },
   async sendVerificationRequest({ identifier: email, provider, token }) {
     try {
-      await axios.post(
-        "https://email.vly.ai/send_otp",
-        {
-          to: email,
-          otp: token,
-          appName: process.env.VLY_APP_NAME || "a vly.ai application",
-        },
-        {
-          headers: {
-            "x-api-key": "vlytothemoon2025",
-          },
-        },
-      );
+      if (!process.env.RESEND_API_KEY) {
+        throw new Error("RESEND_API_KEY environment variable is not set");
+      }
+
+      const resend = new Resend(process.env.RESEND_API_KEY);
+
+      await resend.emails.send({
+        from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
+        to: email,
+        subject: `Your verification code for ${process.env.VLY_APP_NAME || "Aer"}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Your Verification Code</h2>
+            <p>Your verification code is:</p>
+            <div style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 20px 0;">
+              ${token}
+            </div>
+            <p>This code will expire in 15 minutes.</p>
+            <p>If you didn't request this code, you can safely ignore this email.</p>
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+            <p style="color: #666; font-size: 12px;">This email was sent by ${process.env.VLY_APP_NAME || "Aer"}</p>
+          </div>
+        `,
+      });
     } catch (error) {
-      throw new Error(JSON.stringify(error));
+      console.error("Resend email error:", error);
+      throw new Error(`Failed to send verification email: ${error instanceof Error ? error.message : String(error)}`);
     }
   },
 });
