@@ -1,51 +1,86 @@
-// ... keep existing code (imports and initialization)
+// Background service worker for Aer Chrome Extension
+import { ConvexHttpClient } from "convex/browser";
+import nacl from "tweetnacl";
+import { encodeBase64, decodeBase64 } from "tweetnacl-util";
 
-// Initialize Convex client
-const convex = new ConvexHttpClient("https://your-deployment.convex.cloud");
+// Initialize Convex client - REPLACE WITH YOUR ACTUAL CONVEX URL
+const CONVEX_URL = "https://different-bandicoot-508.convex.cloud";
+const convex = new ConvexHttpClient(CONVEX_URL);
 
-// Function to get current user
-async function getCurrentUser() {
-  try {
-    const user = await convex.query("users:currentUser", {});
-    return user;
-  } catch (error) {
-    console.error("Failed to get current user:", error);
-    return null;
-  }
+// Import the API object for function references
+// Note: You'll need to generate this from your Convex project
+// Run: npx convex dev --once to generate the API
+import { api } from "../src/convex/_generated/api.js";
+
+// Derive encryption key from user ID (same as web app)
+async function deriveKeyFromUserId(userId) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(userId);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = new Uint8Array(hashBuffer);
+  const key = hashArray.slice(0, nacl.secretbox.keyLength);
+  return encodeBase64(key);
 }
 
-// Function to save context
-async function saveContext(title, content, url) {
+// Encrypt data using TweetNaCl
+function encryptData(data, secretKey) {
+  const encoder = new TextEncoder();
+  const messageUint8 = encoder.encode(data);
+  const keyUint8 = decodeBase64(secretKey);
+  const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
+  const encrypted = nacl.secretbox(messageUint8, nonce, keyUint8);
+  return {
+    ciphertext: encodeBase64(encrypted),
+    nonce: encodeBase64(nonce)
+  };
+}
+
+// Listen for messages from popup
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "captureAndSave") {
+    handleCapture(request.data)
+      .then(result => sendResponse({ success: true, result }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true; // Keep channel open for async response
+  }
+});
+
+async function handleCapture(pageData) {
   try {
-    const user = await getCurrentUser();
+    // Get current user from Convex using API reference
+    const user = await convex.query(api.users.currentUser, {});
+    
     if (!user) {
-      throw new Error("User not authenticated");
+      throw new Error("Not authenticated. Please log in to the web app first.");
     }
 
     // Derive encryption key from user ID
     const encryptionKey = await deriveKeyFromUserId(user._id);
 
-    // Encrypt the content
+    // Prepare content
+    const content = `URL: ${pageData.url}\n\n${pageData.content}`;
+    const title = pageData.title || "Untitled Page";
+    const summary = content.substring(0, 200) + "...";
+
+    // Encrypt data
     const encryptedContent = encryptData(content, encryptionKey);
     const encryptedTitle = encryptData(title, encryptionKey);
-    const encryptedMetadata = encryptData(JSON.stringify({ url, capturedAt: Date.now() }), encryptionKey);
+    const encryptedSummary = encryptData(summary, encryptionKey);
 
-    // Create context via Convex mutation
+    // Save to Convex using API reference
     const contextId = await convex.mutation(api.contexts.create, {
-      title: title.substring(0, 50), // Truncated for search
+      title: title.substring(0, 50),
       type: "web",
-      url: url,
+      url: pageData.url,
       encryptedContent,
       encryptedTitle,
-      encryptedMetadata,
-      plaintextContent: content, // For AI tag generation
+      encryptedSummary,
+      plaintextContent: content // For AI tag generation
     });
 
-    return contextId;
+    return { contextId, title };
   } catch (error) {
-    console.error("Failed to save context:", error);
+    console.error("Error capturing content:", error);
     throw error;
   }
 }
-
-// ... keep existing code (encryption functions, message listeners, etc)
