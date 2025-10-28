@@ -2,15 +2,11 @@
 import { ConvexHttpClient } from "convex/browser";
 import nacl from "tweetnacl";
 import { encodeBase64, decodeBase64 } from "tweetnacl-util";
+import { api } from "../src/convex/_generated/api.js";
 
 // Initialize Convex client - REPLACE WITH YOUR ACTUAL CONVEX URL
 const CONVEX_URL = "https://different-bandicoot-508.convex.cloud";
 const convex = new ConvexHttpClient(CONVEX_URL);
-
-// Import the API object for function references
-// Note: You'll need to generate this from your Convex project
-// Run: npx convex dev --once to generate the API
-import { api } from "../src/convex/_generated/api.js";
 
 // Derive encryption key from user ID (same as web app)
 async function deriveKeyFromUserId(userId) {
@@ -29,6 +25,7 @@ function encryptData(data, secretKey) {
   const keyUint8 = decodeBase64(secretKey);
   const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
   const encrypted = nacl.secretbox(messageUint8, nonce, keyUint8);
+
   return {
     ciphertext: encodeBase64(encrypted),
     nonce: encodeBase64(nonce)
@@ -37,6 +34,13 @@ function encryptData(data, secretKey) {
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "checkConnection") {
+    checkConnection()
+      .then(result => sendResponse(result))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true; // Keep channel open for async response
+  }
+  
   if (request.action === "captureAndSave") {
     handleCapture(request.data)
       .then(result => sendResponse({ success: true, result }))
@@ -45,9 +49,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+async function checkConnection() {
+  try {
+    // Try to get current user from Convex
+    const user = await convex.query(api.users.currentUser, {});
+    
+    if (user) {
+      return { success: true, user };
+    } else {
+      return { success: false, error: "Not authenticated" };
+    }
+  } catch (error) {
+    console.error("Connection check failed:", error);
+    return { success: false, error: error.message };
+  }
+}
+
 async function handleCapture(pageData) {
   try {
-    // Get current user from Convex using API reference
+    // Get current user from Convex
     const user = await convex.query(api.users.currentUser, {});
     
     if (!user) {
@@ -67,7 +87,7 @@ async function handleCapture(pageData) {
     const encryptedTitle = encryptData(title, encryptionKey);
     const encryptedSummary = encryptData(summary, encryptionKey);
 
-    // Save to Convex using API reference
+    // Save to Convex
     const contextId = await convex.mutation(api.contexts.create, {
       title: title.substring(0, 50),
       type: "web",

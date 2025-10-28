@@ -4,91 +4,179 @@
   <meta charset="UTF-8">
   <style>
     body {
-      width: 300px;
+      width: 320px;
       padding: 16px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       margin: 0;
     }
     
     .header {
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
       margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
     }
     
     .logo {
-      width: 32px;
-      height: 32px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     
-    h1 {
-      font-size: 18px;
+    .logo h1 {
       margin: 0;
+      font-size: 20px;
       font-weight: 600;
+    }
+    
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .status-indicator.connected {
+      background-color: #dcfce7;
+      color: #166534;
+    }
+    
+    .status-indicator.disconnected {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    
+    .status-dot.connected {
+      background-color: #22c55e;
+    }
+    
+    .status-dot.disconnected {
+      background-color: #ef4444;
+    }
+    
+    .content {
+      margin-bottom: 16px;
+    }
+    
+    .info {
+      background-color: #f3f4f6;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #4b5563;
+      margin-bottom: 16px;
+    }
+    
+    .user-info {
+      background-color: #f0fdf4;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #166534;
+      margin-bottom: 16px;
+      display: none;
+    }
+    
+    .user-info.show {
+      display: block;
     }
     
     button {
       width: 100%;
-      padding: 12px;
-      background: #8BA888;
+      padding: 10px;
+      background-color: #8BA888;
       color: white;
       border: none;
       border-radius: 6px;
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background-color 0.2s;
     }
     
-    button:hover {
-      background: #7A9777;
+    button:hover:not(:disabled) {
+      background-color: #7A9777;
     }
     
     button:disabled {
-      background: #ccc;
+      background-color: #d1d5db;
       cursor: not-allowed;
     }
     
-    .status {
+    .error {
+      background-color: #fee2e2;
+      color: #991b1b;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
       margin-top: 12px;
-      padding: 8px;
-      border-radius: 4px;
-      font-size: 13px;
       display: none;
     }
     
-    .status.success {
-      background: #d4edda;
-      color: #155724;
+    .error.show {
       display: block;
     }
     
-    .status.error {
-      background: #f8d7da;
-      color: #721c24;
+    .success {
+      background-color: #dcfce7;
+      color: #166534;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-top: 12px;
+      display: none;
+    }
+    
+    .success.show {
       display: block;
     }
     
-    .status.loading {
-      background: #d1ecf1;
-      color: #0c5460;
-      display: block;
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #6b7280;
+      font-size: 13px;
     }
   </style>
 </head>
 <body>
   <div class="header">
-    <svg class="logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="10" fill="#8BA888"/>
-      <path d="M8 12L11 15L16 9" stroke="white" stroke-width="2" stroke-linecap="round"/>
-    </svg>
-    <h1>Aer Capture</h1>
+    <div class="logo">
+      <h1>Aer</h1>
+    </div>
+    <div class="status-indicator" id="statusIndicator">
+      <div class="status-dot"></div>
+      <span id="statusText">Checking...</span>
+    </div>
   </div>
   
-  <button id="captureBtn">Summarize & Save</button>
-  
-  <div id="status" class="status"></div>
+  <div class="content">
+    <div class="info">
+      Capture this page to your Aer context OS with end-to-end encryption.
+    </div>
+    
+    <div class="user-info" id="userInfo">
+      <strong>Logged in as:</strong> <span id="userEmail"></span>
+    </div>
+    
+    <button id="captureBtn" disabled>
+      Capture Page
+    </button>
+    
+    <div class="error" id="errorMsg"></div>
+    <div class="success" id="successMsg"></div>
+  </div>
   
   <script src="popup.js"></script>
 </body>
