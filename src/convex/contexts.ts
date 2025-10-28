@@ -115,12 +115,15 @@ export const search = query({
     const user = await getCurrentUser(ctx);
     if (!user) return [];
 
-    return await ctx.db
+    // Basic text search on title
+    const basicResults = await ctx.db
       .query("contexts")
       .withSearchIndex("search_content", (q) =>
         q.search("title", args.query).eq("userId", user._id)
       )
       .take(20);
+
+    return basicResults;
   },
 });
 
@@ -134,21 +137,6 @@ export const get = query({
     if (!context || context.userId !== user._id) return null;
 
     return context;
-  },
-});
-
-export const getAllContextsForSemanticSearch = query({
-  args: {},
-  handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return [];
-
-    const allContexts = await ctx.db
-      .query("contexts")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-
-    return allContexts;
   },
 });
 

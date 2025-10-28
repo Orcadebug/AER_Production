@@ -10,7 +10,7 @@ import { useEncryption } from "@/hooks/use-encryption";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { FileText, Loader2, LogOut, Plus, Search, Upload, X, FolderOpen, Tag as TagIcon, Lock, Copy, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -40,7 +40,7 @@ export default function Dashboard() {
   );
   const searchResults = useQuery(
     api.contexts.search,
-    searchQuery ? { query: searchQuery } : "skip"
+    searchQuery && searchQuery.trim().length > 0 ? { query: searchQuery } : "skip"
   );
   const projects = useQuery(api.projects.list);
   const tags = useQuery(api.tags.list);
@@ -473,7 +473,7 @@ export default function Dashboard() {
                       </CardDescription>
                       {context.tags && context.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
-                          {context.tags.slice(0, 5).map((tag, idx) => (
+                          {context.tags.slice(0, 5).map((tag: string, idx: number) => (
                             <Badge
                               key={idx}
                               variant="secondary"

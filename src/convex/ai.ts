@@ -142,29 +142,38 @@ export const generateAndUpdateTags = internalAction({
 
 /**
  * Semantic search: match query to tags and rank results
+ * This is now a public action that can be called from mutations
  */
-export const semanticSearch = internalAction({
+export const semanticSearchPublic = internalAction({
   args: {
     query: v.string(),
-    allContextsWithTags: v.array(
-      v.object({
-        contextId: v.string(),
-        tags: v.array(v.string()),
-        title: v.string(),
-      })
-    ),
+    userId: v.id("users"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<string[]> => {
     try {
-      if (args.allContextsWithTags.length === 0) {
-        return [];
+      // Get all user contexts with tags
+      const allContexts: any[] = await ctx.runQuery(internal.contextsInternal.getAllContextsForUser, {
+        userId: args.userId,
+      });
+
+      const contextsWithTags = allContexts
+        .filter((c: any) => c.tags && c.tags.length > 0)
+        .map((c: any, idx: number) => ({
+          index: idx,
+          contextId: c._id,
+          tags: c.tags,
+          title: c.title,
+        }));
+
+      if (contextsWithTags.length === 0) {
+        return allContexts.map((c: any) => c._id);
       }
 
       // Create a mapping of contexts with their tags
-      const contextsText = args.allContextsWithTags
+      const contextsText = contextsWithTags
         .map(
-          (c, idx) =>
-            `${idx}. Title: "${c.title}" | Tags: ${c.tags.join(", ")}`
+          (c: any) =>
+            `${c.index}. Title: "${c.title}" | Tags: ${c.tags.join(", ")}`
         )
         .join("\n");
 
@@ -193,14 +202,24 @@ Ranking:`;
       const rankings = rankingText
         .split(",")
         .map((n: string) => parseInt(n.trim()))
-        .filter((n: number) => !isNaN(n) && n >= 0 && n < args.allContextsWithTags.length);
+        .filter((n: number) => !isNaN(n) && n >= 0 && n < contextsWithTags.length);
 
       // Return context IDs in ranked order
-      return rankings.map((idx: number) => args.allContextsWithTags[idx].contextId);
+      const rankedIds = rankings.map((idx: number) => contextsWithTags[idx].contextId);
+      
+      // Add any contexts that weren't ranked at the end
+      const unrankedIds = allContexts
+        .map((c: any) => c._id)
+        .filter((id: string) => !rankedIds.includes(id));
+      
+      return [...rankedIds, ...unrankedIds];
     } catch (error) {
       console.error("Error in semantic search:", error);
       // Fallback to original order
-      return args.allContextsWithTags.map((c) => c.contextId);
+      const allContexts: any[] = await ctx.runQuery(internal.contextsInternal.getAllContextsForUser, {
+        userId: args.userId,
+      });
+      return allContexts.map((c: any) => c._id);
     }
   },
 });

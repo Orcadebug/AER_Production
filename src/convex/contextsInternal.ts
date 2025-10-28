@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 
 /**
  * Internal mutation to update tags on a context
@@ -13,5 +13,20 @@ export const updateTags = internalMutation({
     await ctx.db.patch(args.contextId, {
       tags: args.tags,
     });
+  },
+});
+
+/**
+ * Internal query to get all contexts for a user
+ */
+export const getAllContextsForUser = internalQuery({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("contexts")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
   },
 });
