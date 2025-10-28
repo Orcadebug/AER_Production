@@ -7,14 +7,14 @@ export const APP_CONFIG = {
   
   // Auth provider branding (shown in auth footer)
   authProvider: {
-    name: "vly.ai",
-    url: "https://vly.ai",
+    name: "Aer",
+    url: "https://yourdomain.com",
   },
   
   // Support and documentation
-  supportUrl: "https://vly.ai/support",
-  docsUrl: "https://vly.ai/docs",
+  supportUrl: "https://yourdomain.com/support",
+  docsUrl: "https://yourdomain.com/docs",
 } as const;
 
 // Helper to check if using default auth provider
-export const isUsingDefaultAuth = () => APP_CONFIG.authProvider.name === "vly.ai";
+export const isUsingDefaultAuth = () => APP_CONFIG.authProvider.name === "Aer";

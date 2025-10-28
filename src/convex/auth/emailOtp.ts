@@ -20,7 +20,7 @@ export const emailOtp = Email({
       await resend.emails.send({
         from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
         to: email,
-        subject: `Your verification code for ${process.env.VLY_APP_NAME || "Aer"}`,
+        subject: `Your verification code for Aer`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2>Your Verification Code</h2>
@@ -31,7 +31,7 @@ export const emailOtp = Email({
             <p>This code will expire in 15 minutes.</p>
             <p>If you didn't request this code, you can safely ignore this email.</p>
             <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-            <p style="color: #666; font-size: 12px;">This email was sent by ${process.env.VLY_APP_NAME || "Aer"}</p>
+            <p style="color: #666; font-size: 12px;">This email was sent by Aer</p>
           </div>
         `,
       });
