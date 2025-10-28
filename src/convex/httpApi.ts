@@ -17,6 +17,26 @@ export const uploadContext = httpAction(async (ctx, request) => {
       });
     }
 
+    // Extract and validate token (format: aer_{userId})
+    const token = authHeader.substring(7); // Remove "Bearer "
+    if (!token.startsWith("aer_")) {
+      return new Response(JSON.stringify({ error: "Invalid token format" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const userId = token.substring(4); // Remove "aer_" prefix
+    
+    // Verify user exists
+    const user = await ctx.runQuery(internal.users.getCurrentUserInternal, {});
+    if (!user || user._id !== userId) {
+      return new Response(JSON.stringify({ error: "Invalid authentication token" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const body = await request.json();
     const { title, content, type, encryptedContent, encryptedTitle, encryptedMetadata } = body;
 
@@ -39,7 +59,7 @@ export const uploadContext = httpAction(async (ctx, request) => {
 
     // Log audit event
     await ctx.scheduler.runAfter(0, internal.audit.logAuditEvent, {
-      userId: body.userId as Id<"users">,
+      userId: userId as Id<"users">,
       action: "API_UPLOAD_CONTEXT",
       resourceType: "context",
       resourceId: contextId,
@@ -68,6 +88,26 @@ export const batchUploadContexts = httpAction(async (ctx, request) => {
     const authHeader = request.headers.get("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Extract and validate token (format: aer_{userId})
+    const token = authHeader.substring(7); // Remove "Bearer "
+    if (!token.startsWith("aer_")) {
+      return new Response(JSON.stringify({ error: "Invalid token format" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const userId = token.substring(4); // Remove "aer_" prefix
+    
+    // Verify user exists
+    const user = await ctx.runQuery(internal.users.getCurrentUserInternal, {});
+    if (!user || user._id !== userId) {
+      return new Response(JSON.stringify({ error: "Invalid authentication token" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
       });
