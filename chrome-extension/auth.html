@@ -168,10 +168,10 @@
       <strong>How to get your authentication token:</strong>
       <ol>
         <li>Open your Aer web app and sign in</li>
-        <li>Open browser DevTools (F12)</li>
-        <li>Go to <code>Console</code> tab</li>
-        <li>Type: <code>localStorage.getItem('convex-auth')</code></li>
-        <li>Copy the token (without quotes) and paste below</li>
+        <li>Go to <strong>Settings</strong></li>
+        <li>Find the <strong>Connections</strong> section</li>
+        <li>Copy your authentication token (format: <code>aer_xxxxx</code>)</li>
+        <li>Paste it below and click Save</li>
       </ol>
     </div>
     
@@ -180,14 +180,14 @@
       <input 
         type="text" 
         id="tokenInput" 
-        placeholder="Paste your token here..."
+        placeholder="aer_xxxxx..."
         autocomplete="off"
       />
       
-      <button id="saveBtn">Save & Connect</button>
+      <button type="button" id="saveBtn">Save & Connect</button>
     </div>
     
-    <button id="logoutBtn" class="logout-btn" style="display: none;">Disconnect</button>
+    <button type="button" id="logoutBtn" class="logout-btn" style="display: none;">Disconnect</button>
     
     <div class="message error" id="errorMsg"></div>
     <div class="message success" id="successMsg"></div>

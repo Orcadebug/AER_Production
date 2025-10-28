@@ -4,7 +4,7 @@ async function checkAuth() {
   
   if (result.authToken) {
     document.getElementById('status').classList.add('show');
-    document.getElementById('userEmail').textContent = result.userEmail || 'Unknown';
+    document.getElementById('userEmail').textContent = result.userEmail || 'Connected';
     document.getElementById('authForm').style.display = 'none';
     document.getElementById('logoutBtn').style.display = 'block';
   }
@@ -25,8 +25,15 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     return;
   }
   
+  // Validate token format
+  if (!token.startsWith('aer_')) {
+    errorMsg.textContent = 'Invalid token format. Token should start with "aer_"';
+    errorMsg.classList.add('show');
+    return;
+  }
+  
   try {
-    // Test the token by making a request
+    // Test the token by making a simple request
     const response = await fetch('https://different-bandicoot-508.convex.cloud/api/context/upload', {
       method: 'POST',
       headers: {
@@ -34,32 +41,32 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        title: 'Test',
+        title: 'Connection Test',
         type: 'note',
         encryptedContent: { ciphertext: 'test', nonce: 'test' }
       })
     });
     
-    // Even if it fails, if we get a proper response (not 401), the token format is valid
+    // Check if token is valid (not 401 unauthorized)
     if (response.status === 401) {
-      throw new Error('Invalid token. Please check and try again.');
+      throw new Error('Invalid token. Please check your token from Settings and try again.');
     }
     
     // Save token
     await chrome.storage.local.set({ 
       authToken: token,
-      userEmail: 'Connected' // We'll update this when we capture
+      userEmail: 'Connected'
     });
     
-    successMsg.textContent = 'Successfully connected! You can now close this page.';
+    successMsg.textContent = '✓ Successfully connected! You can now close this page and start capturing.';
     successMsg.classList.add('show');
     
     setTimeout(() => {
-      window.close();
-    }, 2000);
+      checkAuth();
+    }, 1000);
     
   } catch (error) {
-    errorMsg.textContent = error.message || 'Failed to validate token';
+    errorMsg.textContent = error.message || 'Failed to validate token. Please try again.';
     errorMsg.classList.add('show');
   }
 });
