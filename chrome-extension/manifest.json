@@ -1,21 +1,3 @@
-{
-  "manifest_version": 3,
-  "name": "Aer Context Capture",
-  "version": "1.0.0",
-  "description": "Capture and save web content to your Aer context OS",
-  "permissions": [
-    "activeTab",
-    "storage",
-    "cookies"
-  ],
-  "host_permissions": [
-    "https://*/*",
-    "http://*/*"
-  ],
-  "background": {
-    "service_worker": "background.js",
-    "type": "module"
-  },
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -24,15 +6,9 @@
       "128": "icon128.png"
     }
   },
-  "content_scripts": [
+  "web_accessible_resources": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "resources": ["auth.html"],
+      "matches": ["<all_urls>"]
     }
   ],
-  "icons": {
-    "16": "icon16.png",
-    "48": "icon48.png",
-    "128": "icon128.png"
-  }
-}
