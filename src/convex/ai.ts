@@ -1,7 +1,7 @@
 "use node";
 
 import { v } from "convex/values";
-import { internalAction } from "./_generated/server";
+import { internalAction, action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import Perplexity from "@perplexity-ai/perplexity_ai";
 
@@ -220,6 +220,64 @@ Ranking:`;
         userId: args.userId,
       });
       return allContexts.map((c: any) => c._id);
+    }
+  },
+});
+
+/**
+ * Match a search query to relevant tags using AI
+ */
+export const matchQueryToTags = action({
+  args: {
+    query: v.string(),
+    allTags: v.array(v.string()),
+  },
+  handler: async (ctx, args): Promise<string[]> => {
+    try {
+      if (args.allTags.length === 0) {
+        return [];
+      }
+
+      const prompt = `Given this search query: "${args.query}"
+
+Available tags: ${args.allTags.join(", ")}
+
+Return the most relevant tags that match this query, ordered from most to least relevant.
+Consider semantic meaning and intent, not just exact keyword matches.
+
+Rules:
+1. Return only tags from the available list
+2. Order by relevance (most relevant first)
+3. Include 3-10 tags maximum
+4. Return ONLY a comma-separated list of tags, no explanations
+
+Relevant tags:`;
+
+      const perplexity = getPerplexity();
+      const response = await perplexity.chat.completions.create({
+        model: "sonar",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
+        max_tokens: 150,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      const tagsText = typeof content === "string" ? content.trim() : "";
+      const matchedTags = tagsText
+        .split(",")
+        .map((tag: string) => tag.trim().toLowerCase())
+        .filter((tag: string) => args.allTags.includes(tag))
+        .slice(0, 10);
+
+      return matchedTags;
+    } catch (error) {
+      console.error("Error matching query to tags:", error);
+      // Fallback to simple keyword matching
+      const queryLower = args.query.toLowerCase();
+      return args.allTags.filter((tag: string) => 
+        tag.toLowerCase().includes(queryLower) || 
+        queryLower.includes(tag.toLowerCase())
+      ).slice(0, 5);
     }
   },
 });

@@ -115,15 +115,38 @@ export const search = query({
     const user = await getCurrentUser(ctx);
     if (!user) return [];
 
-    // Basic text search on title
-    const basicResults = await ctx.db
+    // Get all user contexts with tags
+    const allContexts = await ctx.db
       .query("contexts")
-      .withSearchIndex("search_content", (q) =>
-        q.search("title", args.query).eq("userId", user._id)
-      )
-      .take(20);
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .collect();
 
-    return basicResults;
+    // If no search query, return all contexts
+    if (!args.query || args.query.trim().length === 0) {
+      return allContexts.slice(0, 20);
+    }
+
+    // Collect all unique tags from contexts
+    const allTags = new Set<string>();
+    allContexts.forEach((context) => {
+      if (context.tags) {
+        context.tags.forEach((tag: string) => allTags.add(tag));
+      }
+    });
+
+    // If no tags exist, fall back to title search
+    if (allTags.size === 0) {
+      return await ctx.db
+        .query("contexts")
+        .withSearchIndex("search_content", (q) =>
+          q.search("title", args.query).eq("userId", user._id)
+        )
+        .take(20);
+    }
+
+    // Return contexts with their tags for client-side AI matching
+    return allContexts.filter((c) => c.tags && c.tags.length > 0);
   },
 });
 

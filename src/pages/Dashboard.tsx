@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Id } from "@/convex/_generated/dataModel";
 import { extractTextFromPDF, isPDF } from "@/lib/pdfExtractor";
+import { internal } from "@/convex/_generated/api";
+import { useAction } from "convex/react";
 
 export default function Dashboard() {
   const { isLoading, isAuthenticated, user, signOut } = useAuth();
@@ -29,6 +31,8 @@ export default function Dashboard() {
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [paginationCursor, setPaginationCursor] = useState<string | null>(null);
   const [selectedContext, setSelectedContext] = useState<any | null>(null);
+  const [aiSearchResults, setAiSearchResults] = useState<any[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   const contextsResult = useQuery(
     api.contexts.listPaginated,
@@ -45,13 +49,96 @@ export default function Dashboard() {
   const projects = useQuery(api.projects.list);
   const tags = useQuery(api.tags.list);
 
+  const matchQueryToTags = useAction(api.ai.matchQueryToTags);
+
   const createContext = useMutation(api.contexts.create);
   const createProject = useMutation(api.projects.create);
   const createTag = useMutation(api.tags.create);
   const deleteContext = useMutation(api.contexts.remove);
   const generateUploadUrl = useMutation(api.contexts.generateUploadUrl);
 
-  const displayContexts = searchQuery ? searchResults : contextsResult?.page;
+  // AI-powered search effect
+  useEffect(() => {
+    const performAiSearch = async () => {
+      if (!searchQuery || searchQuery.trim().length === 0) {
+        setAiSearchResults(null);
+        setIsSearching(false);
+        return;
+      }
+
+      if (!searchResults || searchResults.length === 0) {
+        setAiSearchResults([]);
+        setIsSearching(false);
+        return;
+      }
+
+      setIsSearching(true);
+
+      try {
+        // Collect all unique tags from search results
+        const allTags = new Set<string>();
+        searchResults.forEach((context: any) => {
+          if (context.tags) {
+            context.tags.forEach((tag: string) => allTags.add(tag));
+          }
+        });
+
+        if (allTags.size === 0) {
+          setAiSearchResults(searchResults);
+          setIsSearching(false);
+          return;
+        }
+
+        // Use AI to match query to relevant tags
+        const relevantTags = await matchQueryToTags({
+          query: searchQuery,
+          allTags: Array.from(allTags),
+        });
+
+        if (relevantTags.length === 0) {
+          setAiSearchResults(searchResults);
+          setIsSearching(false);
+          return;
+        }
+
+        // Filter and rank contexts by matching tags
+        const rankedContexts = searchResults
+          .map((context: any) => {
+            if (!context.tags || context.tags.length === 0) {
+              return { context, score: 0 };
+            }
+
+            // Calculate relevance score based on tag matches
+            let score = 0;
+            context.tags.forEach((tag: string) => {
+              const tagIndex = relevantTags.indexOf(tag);
+              if (tagIndex !== -1) {
+                // Higher score for more relevant tags (earlier in the list)
+                score += (relevantTags.length - tagIndex) * 10;
+              }
+            });
+
+            return { context, score };
+          })
+          .filter((item: any) => item.score > 0)
+          .sort((a: any, b: any) => b.score - a.score)
+          .map((item: any) => item.context);
+
+        setAiSearchResults(rankedContexts);
+      } catch (error) {
+        console.error("AI search error:", error);
+        setAiSearchResults(searchResults);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    performAiSearch();
+  }, [searchQuery, searchResults, matchQueryToTags]);
+
+  const displayContexts = searchQuery 
+    ? (aiSearchResults !== null ? aiSearchResults : searchResults)
+    : contextsResult?.page;
 
   if (isLoading || !encryptionReady) {
     return (
@@ -310,11 +397,14 @@ export default function Dashboard() {
             <div className="flex-1 min-w-[300px] relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search your contexts..."
+                placeholder="AI-powered search by tags and content..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
               />
+              {isSearching && (
+                <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-[#8BA888]" />
+              )}
             </div>
             <Dialog open={isAddingContext} onOpenChange={setIsAddingContext}>
               <DialogTrigger asChild>
