@@ -1,25 +1,23 @@
-   // In your Chrome extension background script or content script
-   async function uploadContext(title, content, type = "note") {
-     const authToken = await chrome.storage.local.get(['authToken']);
-     
-     // Encrypt content client-side (you'll need to include your encryption library)
-     const encryptedContent = encryptData(content, userKey);
-     const encryptedTitle = encryptData(title, userKey);
-     
-     const response = await fetch('https://[your-deployment].convex.cloud/api/context/upload', {
-       method: 'POST',
-       headers: {
-         'Authorization': `Bearer ${authToken.authToken}`,
-         'Content-Type': 'application/json'
-       },
-       body: JSON.stringify({
-         title: title.substring(0, 50),
-         type: type,
-         encryptedContent: encryptedContent,
-         encryptedTitle: encryptedTitle
-       })
-     });
-     
-     return await response.json();
-   }
-   
+// In your Chrome extension
+import { ConvexHttpClient } from "convex/browser";
+import nacl from "tweetnacl";
+import { encodeBase64, decodeBase64 } from "tweetnacl-util";
+
+const convex = new ConvexHttpClient(process.env.CONVEX_URL);
+
+// Copy this function from your web app
+async function deriveKeyFromUserId(userId) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(userId);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = new Uint8Array(hashBuffer);
+  const key = hashArray.slice(0, nacl.secretbox.keyLength);
+  return encodeBase64(key);
+}
+
+// Get current user and derive key
+async function getEncryptionKey() {
+  const user = await convex.query("users:currentUser");
+  if (!user) throw new Error("Not authenticated");
+  return await deriveKeyFromUserId(user._id);
+}
