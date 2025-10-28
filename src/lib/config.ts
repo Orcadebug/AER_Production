@@ -8,12 +8,15 @@ export const APP_CONFIG = {
   // Auth provider branding (shown in auth footer)
   authProvider: {
     name: "Aer",
-    url: "https://yourdomain.com",
+    url: import.meta.env.VITE_APP_URL || "https://yourdomain.com",
   },
   
   // Support and documentation
-  supportUrl: "https://yourdomain.com/support",
-  docsUrl: "https://yourdomain.com/docs",
+  supportUrl: import.meta.env.VITE_SUPPORT_URL || "https://yourdomain.com/support",
+  docsUrl: import.meta.env.VITE_DOCS_URL || "https://yourdomain.com/docs",
+  
+  // API Configuration
+  convexUrl: import.meta.env.VITE_CONVEX_URL || "",
 } as const;
 
 // Helper to check if using default auth provider

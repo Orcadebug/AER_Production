@@ -1,3 +1,9 @@
+// Get API URL from chrome storage or use default
+async function getApiUrl() {
+  const result = await chrome.storage.local.get(['apiUrl']);
+  return result.apiUrl || 'https://different-bandicoot-508.convex.cloud';
+}
+
 // Check if already authenticated
 async function checkAuth() {
   const result = await chrome.storage.local.get(['authToken', 'userEmail']);
@@ -33,8 +39,9 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   }
   
   try {
+    const apiUrl = await getApiUrl();
     // Test the token by making a simple request
-    const response = await fetch('https://different-bandicoot-508.convex.cloud/api/context/upload', {
+    const response = await fetch(`${apiUrl}/api/context/upload`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
