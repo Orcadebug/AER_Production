@@ -1,0 +1,4 @@
+"host_permissions": [
+  "https://*.convex.cloud/*",
+  "https://*.convex.site/*"
+]
