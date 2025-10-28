@@ -53,6 +53,15 @@ export default function Settings() {
   // In production, this should be a proper JWT or session token
   const authToken = user?._id ? `aer_${user._id}` : "";
 
+  // Early return if user is not loaded yet
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#8BA888]" />
+      </div>
+    );
+  }
+
   const handleCopyToken = () => {
     navigator.clipboard.writeText(authToken);
     setTokenCopied(true);
