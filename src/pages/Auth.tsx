@@ -214,14 +214,6 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                       onChange={setOtp}
                       maxLength={6}
                       disabled={isLoading}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && otp.length === 6 && !isLoading) {
-                          const form = (e.target as HTMLElement).closest("form");
-                          if (form) {
-                            form.requestSubmit();
-                          }
-                        }
-                      }}
                     >
                       <InputOTPGroup>
                         {Array.from({ length: 6 }).map((_, index) => (
