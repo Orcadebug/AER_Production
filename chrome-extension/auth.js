@@ -1,7 +1,10 @@
-// Get API URL from chrome storage or use default
+// Get API URL helper
 async function getApiUrl() {
-  const result = await chrome.storage.local.get(['apiUrl']);
-  return result.apiUrl || 'https://different-bandicoot-508.convex.cloud';
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['apiUrl'], (result) => {
+      resolve(result.apiUrl || 'https://different-bandicoot-508.convex.cloud');
+    });
+  });
 }
 
 // Check if already authenticated
@@ -31,7 +34,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     return;
   }
   
-  // Validate token format
+  // Validate token format (must be aer_{userId})
   if (!token.startsWith('aer_')) {
     errorMsg.textContent = 'Invalid token format. Token should start with "aer_"';
     errorMsg.classList.add('show');
@@ -40,29 +43,20 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   
   try {
     const apiUrl = await getApiUrl();
-    // Test the token by making a simple request
-    const response = await fetch(`${apiUrl}/api/context/upload`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        title: 'Connection Test',
-        type: 'note',
-        encryptedContent: { ciphertext: 'test', nonce: 'test' }
-      })
+    
+    // Test the token by checking connection through background script
+    const response = await chrome.runtime.sendMessage({ 
+      action: 'checkConnection'
     });
     
-    // Check if token is valid (not 401 unauthorized)
-    if (response.status === 401) {
+    if (!response.success || !response.hasToken) {
       throw new Error('Invalid token. Please check your token from Settings and try again.');
     }
     
     // Save token
     await chrome.storage.local.set({ 
       authToken: token,
-      userEmail: 'Connected'
+      userEmail: response.user?.email || 'Connected'
     });
     
     successMsg.textContent = '✓ Successfully connected! You can now close this page and start capturing.';
