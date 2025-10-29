@@ -24,6 +24,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   const token = document.getElementById('tokenInput').value.trim();
   const errorMsg = document.getElementById('errorMsg');
   const successMsg = document.getElementById('successMsg');
+  const saveBtn = document.getElementById('saveBtn');
   
   errorMsg.classList.remove('show');
   successMsg.classList.remove('show');
@@ -42,33 +43,52 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   }
   
   try {
-    const apiUrl = await getApiUrl();
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
     
-    // Test the token by checking connection through background script
+    // Save token FIRST
+    await chrome.storage.local.set({ 
+      authToken: token,
+      userEmail: 'Connected'
+    });
+    
+    // Wait a moment for storage to sync
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Now test the connection
     const response = await chrome.runtime.sendMessage({ 
       action: 'checkConnection'
     });
     
-    if (!response.success || !response.hasToken) {
-      throw new Error('Invalid token. Please check your token from Settings and try again.');
+    if (response.success && response.hasToken) {
+      successMsg.textContent = '✓ Successfully connected! You can now close this page and start capturing.';
+      successMsg.classList.add('show');
+      
+      setTimeout(() => {
+        checkAuth();
+      }, 1000);
+    } else {
+      // Token saved but connection test failed - still allow it
+      successMsg.textContent = '✓ Token saved! You can now close this page and start capturing.';
+      successMsg.classList.add('show');
+      
+      setTimeout(() => {
+        checkAuth();
+      }, 1000);
     }
     
-    // Save token
-    await chrome.storage.local.set({ 
-      authToken: token,
-      userEmail: response.user?.email || 'Connected'
-    });
+  } catch (error) {
+    console.error('Save error:', error);
+    errorMsg.textContent = 'Token saved, but connection test failed. You can still try using the extension.';
+    errorMsg.classList.add('show');
     
-    successMsg.textContent = '✓ Successfully connected! You can now close this page and start capturing.';
-    successMsg.classList.add('show');
-    
+    // Still show success after a moment since token is saved
     setTimeout(() => {
       checkAuth();
-    }, 1000);
-    
-  } catch (error) {
-    errorMsg.textContent = error.message || 'Failed to validate token. Please try again.';
-    errorMsg.classList.add('show');
+    }, 2000);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save & Connect';
   }
 });
 
