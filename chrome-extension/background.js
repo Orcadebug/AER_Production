@@ -1,55 +1,7 @@
-// Background service worker for Aer Chrome Extension
-import nacl from "tweetnacl";
-import { encodeBase64, decodeBase64 } from "tweetnacl-util";
-
-// API endpoint - dynamically loaded from storage or environment
-let API_BASE_URL = "https://different-bandicoot-508.convex.cloud";
-
-// Load API URL from storage on startup
-chrome.storage.local.get(['apiUrl'], (result) => {
-  if (result.apiUrl) {
-    API_BASE_URL = result.apiUrl;
-    console.log('[init] ✅ Loaded API URL from storage:', API_BASE_URL);
-  } else {
-    console.log('[init] ℹ️ Using default API URL:', API_BASE_URL);
-  }
-});
-
-// ... keep existing code for ConvexClient setup ...
-
-let authToken = null;
-const convexClient = new ConvexClient(API_BASE_URL);
-
-// Initialize auth token from storage
-chrome.storage.local.get(['authToken'], (result) => {
-  if (result.authToken) {
-    authToken = result.authToken;
-    console.log('[init] ✅ Loaded auth token from storage');
-    convexClient.setAuth(authToken);
-  } else {
-    console.log('[init] ⚠️ No auth token found in storage');
-  }
-});
-
-// Listen for auth token changes
-chrome.storage.onChanged.addListener((changes, namespace) => {
-  if (namespace === 'local' && changes.authToken) {
-    authToken = changes.authToken.newValue;
-    console.log('[storage.onChange] ✅ Auth token updated:', authToken ? 'Token set' : 'Token cleared');
-    if (authToken) {
-      convexClient.setAuth(authToken);
-    }
-  }
-  if (namespace === 'local' && changes.apiUrl) {
-    API_BASE_URL = changes.apiUrl.newValue;
-    console.log('[storage.onChange] ✅ API URL updated:', API_BASE_URL);
-  }
-});
-
 async function checkConnection() {
   try {
     console.log('[checkConnection] Checking auth with token:', authToken ? '✅ Token loaded' : '❌ No token');
-    console.log('[checkConnection] Convex URL:', API_BASE_URL);
+    console.log('[checkConnection] API URL:', API_BASE_URL);
     
     if (!authToken) {
       console.warn('[checkConnection] ⚠️ No auth token found. User must set up authentication first.');
@@ -62,68 +14,68 @@ async function checkConnection() {
       return { success: false, hasToken: false, error: 'Invalid token format' };
     }
 
-    console.log('[checkConnection] Attempting users:currentUser query with token...');
-    const user = await convexClient.query('users:currentUser', {});
-    console.log('[checkConnection] User query result:', user);
+    console.log('[checkConnection] Testing token with HTTP API...');
     
-    const hasValidUser = user !== null;
-    console.log('[checkConnection] Has valid user:', hasValidUser);
-    
-    if (hasValidUser) {
-      console.log('[checkConnection] ✅ CONNECTED - User:', user.email || user._id);
-    } else {
-      console.log('[checkConnection] ⚠️ No user returned - token may be invalid');
+    // Test the token by making a simple HTTP request to the backend
+    // We'll use the MCP endpoint as a lightweight test
+    const response = await fetch(`${API_BASE_URL}/api/mcp`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        tool: 'get_user_stats',
+        args: {}
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[checkConnection] ❌ HTTP request failed:', response.status, errorText);
+      
+      if (response.status === 401) {
+        return { success: false, hasToken: false, error: 'Invalid or expired token' };
+      }
+      
+      return { success: false, hasToken: false, error: `Server error: ${response.status}` };
     }
+
+    const result = await response.json();
+    console.log('[checkConnection] ✅ Token validated successfully:', result);
     
-    return { success: true, hasToken: hasValidUser, user };
+    // Extract user ID from token for display
+    const userId = authToken.substring(4); // Remove "aer_" prefix
+    
+    return { 
+      success: true, 
+      hasToken: true, 
+      user: { _id: userId, email: 'Connected' }
+    };
+    
   } catch (error) {
-    console.error('[checkConnection] ❌ Auth query failed:', error.message);
+    console.error('[checkConnection] ❌ Connection test failed:', error.message);
     
-    if (error.message.includes('404')) {
-      console.error('[checkConnection] 404 Error - Convex deployment not found. Check URL');
-    } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
-      console.error('[checkConnection] 401 Error - Token is invalid or expired');
+    if (error.message.includes('Failed to fetch')) {
+      console.error('[checkConnection] Network error - Check if API URL is correct');
     }
     
     return { success: false, hasToken: false, error: error.message };
   }
 }
 
-// ... keep existing message listeners and capture functions ...
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'checkConnection') {
-    checkConnection()
-      .then(result => sendResponse(result))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  }
-  
-  if (message.action === 'captureAndSave') {
-    captureAndSave(message.data)
-      .then(result => sendResponse(result))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  }
-  
-  if (message.action === 'openAuth') {
-    chrome.tabs.create({ url: chrome.runtime.getURL('auth.html') });
-    sendResponse({ success: true });
-  }
-});
-
 async function captureAndSave(data) {
   try {
     // Check authentication first
     const connectionStatus = await checkConnection();
     if (!connectionStatus.hasToken) {
-      throw new Error('Not authenticated. Please log in to Aer first.');
+      throw new Error('Not authenticated. Please set up authentication in the extension first.');
     }
     
-    const user = connectionStatus.user;
+    const userId = authToken.substring(4); // Extract user ID from aer_{userId}
     
     // Generate encryption key from user ID
-    const encryptionKey = await generateEncryptionKey(user._id);
+    const encryptionKey = await generateEncryptionKey(userId);
     
     // Encrypt content
     const fullContent = `URL: ${data.url}\n\n${data.content}`;
@@ -134,49 +86,40 @@ async function captureAndSave(data) {
     const encryptedTitle = encryptData(title, encryptionKey);
     const encryptedSummary = encryptData(summary, encryptionKey);
     
-    // Save to Convex
-    const contextId = await convexClient.mutation('contexts:create', {
-      title: title.substring(0, 50),
-      type: 'web',
-      url: data.url,
-      encryptedContent,
-      encryptedTitle,
-      encryptedSummary,
-      plaintextContent: fullContent
-    });
+    // Save via HTTP API endpoint
+    console.log('[captureAndSave] Uploading to:', `${API_BASE_URL}/api/context/upload`);
     
-    return {
-      contextId,
-      title,
-      success: true
-    };
+    const response = await fetch(`${API_BASE_URL}/api/context/upload`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: title.substring(0, 50),
+        type: 'web',
+        content: fullContent,
+        encryptedContent,
+        encryptedTitle,
+        encryptedMetadata: {
+          ciphertext: encodeBase64(new Uint8Array([1, 2, 3])), // Placeholder
+          nonce: encodeBase64(new Uint8Array([4, 5, 6]))
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('[captureAndSave] ✅ Context saved:', result.contextId);
+    
+    return { success: true, contextId: result.contextId };
+    
   } catch (error) {
-    console.error('Error capturing content:', error);
+    console.error('[captureAndSave] ❌ Failed to save:', error);
     throw error;
   }
 }
-
-async function generateEncryptionKey(userId) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(userId);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const keyBytes = new Uint8Array(hashBuffer).slice(0, nacl.secretbox.keyLength);
-  return encodeBase64(keyBytes);
-}
-
-function encryptData(text, keyBase64) {
-  const encoder = new TextEncoder();
-  const messageBytes = encoder.encode(text);
-  const keyBytes = decodeBase64(keyBase64);
-  const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
-  const encrypted = nacl.secretbox(messageBytes, nonce, keyBytes);
-  
-  return {
-    ciphertext: encodeBase64(encrypted),
-    nonce: encodeBase64(nonce)
-  };
-}
-
-chrome.runtime.onInstalled.addListener(() => {
-  console.log('Aer Extension installed/updated');
-});
