@@ -5,6 +5,7 @@ import { mcpEndpoint } from "./mcp/index";
 
 const http = httpRouter();
 
+// Add auth routes first
 auth.addHttpRoutes(http);
 
 // E2E encrypted API endpoints
@@ -27,4 +28,5 @@ http.route({
   handler: mcpEndpoint,
 });
 
+// Export the router as default
 export default http;
