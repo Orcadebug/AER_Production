@@ -41,11 +41,11 @@ export const listAll = query({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
-    if (!user) throw new Error("Unauthorized");
+    if (!user) return [];
     
     // Check if user is admin (you can modify this check based on your needs)
     if (user.role !== "admin") {
-      throw new Error("Admin access required");
+      return [];
     }
 
     return await ctx.db
