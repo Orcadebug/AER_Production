@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound.tsx";
 import Settings from "./pages/Settings.tsx";
 import Terms from "./pages/Terms.tsx";
 import Privacy from "./pages/Privacy.tsx";
+import Support from "./pages/Support.tsx";
 import "./types/global.d.ts";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
@@ -52,6 +53,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/" element={<Landing />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/support" element={<Support />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />

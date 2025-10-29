@@ -166,6 +166,9 @@ export default function Landing() {
             <button onClick={() => navigate("/privacy")} className="hover:text-primary underline">
               Privacy Policy
             </button>
+            <button onClick={() => navigate("/support")} className="hover:text-primary underline">
+              Support
+            </button>
           </div>
         </div>
       </footer>

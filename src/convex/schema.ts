@@ -102,6 +102,16 @@ const schema = defineSchema(
         filterFields: ["userId"],
       }),
 
+    // Feedback and support tickets
+    feedback: defineTable({
+      userId: v.id("users"),
+      userEmail: v.string(),
+      type: v.union(v.literal("bug"), v.literal("feature"), v.literal("question")),
+      title: v.string(),
+      description: v.string(),
+      status: v.union(v.literal("open"), v.literal("in_progress"), v.literal("resolved"), v.literal("closed")),
+    }).index("by_user", ["userId"]),
+
     // Audit log for encryption events
     auditLog: defineTable({
       userId: v.id("users"),

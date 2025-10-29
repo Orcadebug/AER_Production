@@ -20,6 +20,7 @@ import type * as auth_emailOtp from "../auth/emailOtp.js";
 import type * as auth from "../auth.js";
 import type * as contexts from "../contexts.js";
 import type * as contextsInternal from "../contextsInternal.js";
+import type * as feedback from "../feedback.js";
 import type * as http from "../http.js";
 import type * as httpApi from "../httpApi.js";
 import type * as mcp_aiModels from "../mcp/aiModels.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   contexts: typeof contexts;
   contextsInternal: typeof contextsInternal;
+  feedback: typeof feedback;
   http: typeof http;
   httpApi: typeof httpApi;
   "mcp/aiModels": typeof mcp_aiModels;
