@@ -1,3 +1,69 @@
+// Configuration - loaded from chrome.storage
+let authToken = null;
+let API_BASE_URL = null;
+
+// Load configuration on startup
+chrome.storage.local.get(['authToken', 'apiBaseUrl'], (result) => {
+  authToken = result.authToken || null;
+  API_BASE_URL = result.apiBaseUrl || 'https://different-bandicoot-508.convex.cloud';
+  console.log('[Init] Configuration loaded:', { 
+    hasToken: !!authToken, 
+    apiUrl: API_BASE_URL 
+  });
+});
+
+// Listen for storage changes
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'local') {
+    if (changes.authToken) {
+      authToken = changes.authToken.newValue;
+      console.log('[Storage] Auth token updated:', !!authToken);
+    }
+    if (changes.apiBaseUrl) {
+      API_BASE_URL = changes.apiBaseUrl.newValue;
+      console.log('[Storage] API URL updated:', API_BASE_URL);
+    }
+  }
+});
+
+// Base64 encoding/decoding helpers
+function encodeBase64(bytes) {
+  const binString = Array.from(bytes, (byte) => String.fromCodePoint(byte)).join('');
+  return btoa(binString);
+}
+
+function decodeBase64(base64) {
+  const binString = atob(base64);
+  return Uint8Array.from(binString, (m) => m.codePointAt(0));
+}
+
+// Simple encryption key derivation from user ID
+async function generateEncryptionKey(userId) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(userId);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return new Uint8Array(hashBuffer);
+}
+
+// Simple XOR encryption (placeholder - in production use proper encryption)
+function encryptData(text, key) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const encrypted = new Uint8Array(data.length);
+  
+  for (let i = 0; i < data.length; i++) {
+    encrypted[i] = data[i] ^ key[i % key.length];
+  }
+  
+  // Generate a random nonce
+  const nonce = crypto.getRandomValues(new Uint8Array(24));
+  
+  return {
+    ciphertext: encodeBase64(encrypted),
+    nonce: encodeBase64(nonce)
+  };
+}
+
 async function checkConnection() {
   try {
     console.log('[checkConnection] Checking auth with token:', authToken ? '✅ Token loaded' : '❌ No token');
@@ -17,7 +83,6 @@ async function checkConnection() {
     console.log('[checkConnection] Testing token with HTTP API...');
     
     // Test the token by making a simple HTTP request to the backend
-    // We'll use the MCP endpoint as a lightweight test
     const response = await fetch(`${API_BASE_URL}/api/mcp`, {
       method: 'POST',
       headers: {
@@ -102,7 +167,7 @@ async function captureAndSave(data) {
         encryptedContent,
         encryptedTitle,
         encryptedMetadata: {
-          ciphertext: encodeBase64(new Uint8Array([1, 2, 3])), // Placeholder
+          ciphertext: encodeBase64(new Uint8Array([1, 2, 3])),
           nonce: encodeBase64(new Uint8Array([4, 5, 6]))
         }
       })
@@ -123,3 +188,28 @@ async function captureAndSave(data) {
     throw error;
   }
 }
+
+// Message handler
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('[Background] Received message:', request.action);
+  
+  if (request.action === 'checkConnection') {
+    checkConnection().then(sendResponse);
+    return true; // Keep channel open for async response
+  }
+  
+  if (request.action === 'captureContent') {
+    captureAndSave(request.data)
+      .then(result => sendResponse({ success: true, result }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+  
+  if (request.action === 'openAuth') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('auth.html') });
+    sendResponse({ success: true });
+    return false;
+  }
+});
+
+console.log('[Background] Service worker initialized');
