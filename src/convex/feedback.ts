@@ -37,6 +37,24 @@ export const list = query({
   },
 });
 
+export const listAll = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Unauthorized");
+    
+    // Check if user is admin (you can modify this check based on your needs)
+    if (user.role !== "admin") {
+      throw new Error("Admin access required");
+    }
+
+    return await ctx.db
+      .query("feedback")
+      .order("desc")
+      .collect();
+  },
+});
+
 export const updateStatus = mutation({
   args: {
     id: v.id("feedback"),
@@ -47,8 +65,13 @@ export const updateStatus = mutation({
     if (!user) throw new Error("Unauthorized");
 
     const feedback = await ctx.db.get(args.id);
-    if (!feedback || feedback.userId !== user._id) {
+    if (!feedback) {
       throw new Error("Feedback not found");
+    }
+
+    // Allow admin to update any feedback, or users to update their own
+    if (user.role !== "admin" && feedback.userId !== user._id) {
+      throw new Error("Not authorized to update this feedback");
     }
 
     await ctx.db.patch(args.id, {
