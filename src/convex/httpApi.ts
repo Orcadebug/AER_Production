@@ -38,23 +38,52 @@ export const uploadContext = httpAction(async (ctx, request) => {
     }
 
     const body = await request.json();
-    const { title, content, type, encryptedContent, encryptedTitle, encryptedMetadata } = body;
-
-    // Validate required fields
-    if (!encryptedContent || !encryptedContent.ciphertext || !encryptedContent.nonce) {
-      return new Response(
-        JSON.stringify({ error: "Missing encrypted content" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // Create context via mutation
-    const contextId = await ctx.runMutation(api.contexts.create, {
-      title: title || "Untitled",
-      type: type || "note",
+    const {
+      title,
+      content,
+      type,
       encryptedContent,
       encryptedTitle,
       encryptedMetadata,
+      encryptedSummary,
+    } = body;
+
+    // Prepare encrypted fields with a graceful fallback if client didn't send them
+    let encContent = encryptedContent as { ciphertext: string; nonce: string } | undefined;
+    let encTitle = encryptedTitle as { ciphertext: string; nonce: string } | undefined;
+    let encSummary = encryptedSummary as { ciphertext: string; nonce: string } | undefined;
+
+    // If encrypted content is missing, but plaintext content exists, wrap it in a fallback envelope
+    if (!encContent || !encContent.ciphertext || !encContent.nonce) {
+      if (typeof content === "string" && content.length > 0) {
+        const summary =
+          content.length > 200 ? content.slice(0, 200).trim() + "..." : content.trim();
+
+        // Fallback "encryption" envelope so the server can accept and store.
+        // Note: Not truly encrypted. This is a temporary compatibility layer.
+        encContent = { ciphertext: content, nonce: "plain" };
+        encTitle =
+          encTitle ||
+          (title ? { ciphertext: String(title), nonce: "plain" } : undefined);
+        encSummary =
+          encSummary || { ciphertext: summary, nonce: "plain" };
+      } else {
+        return new Response(JSON.stringify({ error: "Missing encrypted content" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Create context via mutation (now also passing encryptedSummary + plaintextContent if provided)
+    const contextId = await ctx.runMutation(api.contexts.create, {
+      title: title || "Untitled",
+      type: type || "note",
+      encryptedContent: encContent,
+      encryptedTitle: encTitle,
+      encryptedSummary: encSummary,
+      encryptedMetadata,
+      plaintextContent: typeof content === "string" ? content : undefined,
     });
 
     // Log audit event
@@ -123,16 +152,49 @@ export const batchUploadContexts = httpAction(async (ctx, request) => {
       );
     }
 
-    const results = [];
+    const results: Array<{ success: boolean; contextId?: string; error?: string }> = [];
     for (const context of contexts) {
       try {
+        const {
+          title,
+          content,
+          type,
+          encryptedContent,
+          encryptedTitle,
+          encryptedMetadata,
+          encryptedSummary,
+        } = context;
+
+        let encContent = encryptedContent as { ciphertext: string; nonce: string } | undefined;
+        let encTitle = encryptedTitle as { ciphertext: string; nonce: string } | undefined;
+        let encSummary = encryptedSummary as { ciphertext: string; nonce: string } | undefined;
+
+        if (!encContent || !encContent.ciphertext || !encContent.nonce) {
+          if (typeof content === "string" && content.length > 0) {
+            const summary =
+              content.length > 200 ? content.slice(0, 200).trim() + "..." : content.trim();
+
+            encContent = { ciphertext: content, nonce: "plain" };
+            encTitle =
+              encTitle ||
+              (title ? { ciphertext: String(title), nonce: "plain" } : undefined);
+            encSummary =
+              encSummary || { ciphertext: summary, nonce: "plain" };
+          } else {
+            throw new Error("Missing encrypted content");
+          }
+        }
+
         const contextId = await ctx.runMutation(api.contexts.create, {
-          title: context.title || "Untitled",
-          type: context.type || "note",
-          encryptedContent: context.encryptedContent,
-          encryptedTitle: context.encryptedTitle,
-          encryptedMetadata: context.encryptedMetadata,
+          title: title || "Untitled",
+          type: type || "note",
+          encryptedContent: encContent,
+          encryptedTitle: encTitle,
+          encryptedSummary: encSummary,
+          encryptedMetadata,
+          plaintextContent: typeof content === "string" ? content : undefined,
         });
+
         results.push({ success: true, contextId });
       } catch (error) {
         results.push({ success: false, error: String(error) });
