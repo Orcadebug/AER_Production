@@ -69,11 +69,16 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       navigate(redirect);
     } catch (error) {
       console.error("Authentication error:", error);
-      setError(
-        isSignUp 
-          ? "Failed to create account. Please try again."
-          : "Invalid email or password. Please try again.",
-      );
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Check if the error indicates the user doesn't exist
+      if (!isSignUp && errorMessage.includes("InvalidSecret")) {
+        setError("No account found with this email. Please sign up first.");
+      } else if (isSignUp) {
+        setError("Failed to create account. Please try again.");
+      } else {
+        setError("Invalid email or password. Please try again.");
+      }
       setIsLoading(false);
     }
   };
