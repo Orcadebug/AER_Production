@@ -60,6 +60,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         return;
       }
 
+      // Add the flow parameter required by Convex Auth Password provider
+      formData.append("flow", isSignUp ? "signUp" : "signIn");
+
       await signIn("password", formData);
       
       const redirect = redirectAfterAuth || "/";
