@@ -19,7 +19,8 @@ export const create = mutation({
     fileType: v.optional(v.string()),
     url: v.optional(v.string()),
     // Encrypted fields
-    encryptedContent: encryptedDataValidator,
+    // Make encryptedContent optional to allow plaintext-only uploads
+    encryptedContent: v.optional(encryptedDataValidator),
     encryptedTitle: v.optional(encryptedDataValidator),
     encryptedSummary: v.optional(encryptedDataValidator),
     encryptedMetadata: v.optional(encryptedDataValidator),
@@ -30,6 +31,34 @@ export const create = mutation({
     const user = await getCurrentUser(ctx);
     if (!user) throw new Error("Unauthorized");
 
+    // Added: Server-side fallback generation when encrypted fields are missing
+    const encContent =
+      args.encryptedContent ??
+      (args.plaintextContent
+        ? { ciphertext: args.plaintextContent, nonce: "plain" }
+        : null);
+
+    if (!encContent) {
+      throw new Error("Missing encrypted content");
+    }
+
+    const encTitle =
+      args.encryptedTitle ??
+      (args.title ? { ciphertext: args.title, nonce: "plain" } : undefined);
+
+    const generatedSummary =
+      args.plaintextContent
+        ? (args.plaintextContent.length > 200
+            ? args.plaintextContent.slice(0, 200).trim() + "..."
+            : args.plaintextContent.trim())
+        : undefined;
+
+    const encSummary =
+      args.encryptedSummary ??
+      (generatedSummary
+        ? { ciphertext: generatedSummary, nonce: "plain" }
+        : undefined);
+
     // Get user's total context count for tag granularity
     const totalContexts = await ctx.db
       .query("contexts")
@@ -37,7 +66,7 @@ export const create = mutation({
       .collect()
       .then((contexts) => contexts.length);
 
-    // Insert context first (without AI tags)
+    // Insert context first (use resolved encrypted fields above)
     const contextId = await ctx.db.insert("contexts", {
       userId: user._id,
       title: args.title,
@@ -48,9 +77,9 @@ export const create = mutation({
       fileName: args.fileName,
       fileType: args.fileType,
       url: args.url,
-      encryptedContent: args.encryptedContent,
-      encryptedTitle: args.encryptedTitle,
-      encryptedSummary: args.encryptedSummary,
+      encryptedContent: encContent,
+      encryptedTitle: encTitle,
+      encryptedSummary: encSummary,
       encryptedMetadata: args.encryptedMetadata,
     });
 
