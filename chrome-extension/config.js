@@ -2,7 +2,7 @@
 // This file should be generated during build process with actual values
 
 const CONFIG = {
-  API_BASE_URL: 'https://different-bandicoot-508.convex.cloud', // Replace during build
+  API_BASE_URL: 'https://different-bandicoot-508.convex.site', // Updated to correct deployment URL
   APP_NAME: 'Aer',
 };
 
