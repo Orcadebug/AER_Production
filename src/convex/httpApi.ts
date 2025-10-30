@@ -41,6 +41,7 @@ export const uploadContext = httpAction(async (ctx, request) => {
     const {
       title,
       content,
+      plaintext,
       type,
       encryptedContent,
       encryptedTitle,
@@ -53,22 +54,25 @@ export const uploadContext = httpAction(async (ctx, request) => {
     let encTitle = encryptedTitle as { ciphertext: string; nonce: string } | undefined;
     let encSummary = encryptedSummary as { ciphertext: string; nonce: string } | undefined;
 
+    // Accept plaintext content from either 'content' or 'plaintext' field
+    const plaintextContent = plaintext || content;
+
     // If encrypted content is missing, but plaintext content exists, wrap it in a fallback envelope
     if (!encContent || !encContent.ciphertext || !encContent.nonce) {
-      if (typeof content === "string" && content.length > 0) {
+      if (typeof plaintextContent === "string" && plaintextContent.length > 0) {
         const summary =
-          content.length > 200 ? content.slice(0, 200).trim() + "..." : content.trim();
+          plaintextContent.length > 200 ? plaintextContent.slice(0, 200).trim() + "..." : plaintextContent.trim();
 
         // Fallback "encryption" envelope so the server can accept and store.
         // Note: Not truly encrypted. This is a temporary compatibility layer.
-        encContent = { ciphertext: content, nonce: "plain" };
+        encContent = { ciphertext: plaintextContent, nonce: "plain" };
         encTitle =
           encTitle ||
           (title ? { ciphertext: String(title), nonce: "plain" } : undefined);
         encSummary =
           encSummary || { ciphertext: summary, nonce: "plain" };
-      } else if (!content || content.length === 0) {
-        return new Response(JSON.stringify({ error: "Missing content (either encrypted or plaintext)" }), {
+      } else {
+        return new Response(JSON.stringify({ error: "Missing content (provide either 'content', 'plaintext', or 'encryptedContent')" }), {
           status: 400,
           headers: { "Content-Type": "application/json" },
         });
@@ -83,7 +87,7 @@ export const uploadContext = httpAction(async (ctx, request) => {
       encryptedTitle: encTitle,
       encryptedSummary: encSummary,
       encryptedMetadata,
-      plaintextContent: typeof content === "string" ? content : undefined,
+      plaintextContent: typeof plaintextContent === "string" ? plaintextContent : undefined,
     });
 
     // Log audit event
@@ -158,6 +162,7 @@ export const batchUploadContexts = httpAction(async (ctx, request) => {
         const {
           title,
           content,
+          plaintext,
           type,
           encryptedContent,
           encryptedTitle,
@@ -169,19 +174,21 @@ export const batchUploadContexts = httpAction(async (ctx, request) => {
         let encTitle = encryptedTitle as { ciphertext: string; nonce: string } | undefined;
         let encSummary = encryptedSummary as { ciphertext: string; nonce: string } | undefined;
 
-        if (!encContent || !encContent.ciphertext || !encContent.nonce) {
-          if (typeof content === "string" && content.length > 0) {
-            const summary =
-              content.length > 200 ? content.slice(0, 200).trim() + "..." : content.trim();
+        const plaintextContent = plaintext || content;
 
-            encContent = { ciphertext: content, nonce: "plain" };
+        if (!encContent || !encContent.ciphertext || !encContent.nonce) {
+          if (typeof plaintextContent === "string" && plaintextContent.length > 0) {
+            const summary =
+              plaintextContent.length > 200 ? plaintextContent.slice(0, 200).trim() + "..." : plaintextContent.trim();
+
+            encContent = { ciphertext: plaintextContent, nonce: "plain" };
             encTitle =
               encTitle ||
               (title ? { ciphertext: String(title), nonce: "plain" } : undefined);
             encSummary =
               encSummary || { ciphertext: summary, nonce: "plain" };
-          } else if (!content || content.length === 0) {
-            throw new Error("Missing content (either encrypted or plaintext)");
+          } else {
+            throw new Error("Missing content (provide either 'content', 'plaintext', or 'encryptedContent')");
           }
         }
 
@@ -192,7 +199,7 @@ export const batchUploadContexts = httpAction(async (ctx, request) => {
           encryptedTitle: encTitle,
           encryptedSummary: encSummary,
           encryptedMetadata,
-          plaintextContent: typeof content === "string" ? content : undefined,
+          plaintextContent: typeof plaintextContent === "string" ? plaintextContent : undefined,
         });
 
         results.push({ success: true, contextId });
