@@ -70,11 +70,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     } catch (error) {
       console.error("Authentication error:", error);
       setError(
-        error instanceof Error
-          ? error.message
-          : isSignUp 
-            ? "Failed to create account. Please try again."
-            : "Invalid email or password. Please try again.",
+        isSignUp 
+          ? "Failed to create account. Please try again."
+          : "Invalid email or password. Please try again.",
       );
       setIsLoading(false);
     }
