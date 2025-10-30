@@ -67,8 +67,8 @@ export const uploadContext = httpAction(async (ctx, request) => {
           (title ? { ciphertext: String(title), nonce: "plain" } : undefined);
         encSummary =
           encSummary || { ciphertext: summary, nonce: "plain" };
-      } else {
-        return new Response(JSON.stringify({ error: "Missing encrypted content" }), {
+      } else if (!content || content.length === 0) {
+        return new Response(JSON.stringify({ error: "Missing content (either encrypted or plaintext)" }), {
           status: 400,
           headers: { "Content-Type": "application/json" },
         });
@@ -180,8 +180,8 @@ export const batchUploadContexts = httpAction(async (ctx, request) => {
               (title ? { ciphertext: String(title), nonce: "plain" } : undefined);
             encSummary =
               encSummary || { ciphertext: summary, nonce: "plain" };
-          } else {
-            throw new Error("Missing encrypted content");
+          } else if (!content || content.length === 0) {
+            throw new Error("Missing content (either encrypted or plaintext)");
           }
         }
 
