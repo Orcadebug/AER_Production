@@ -83,7 +83,7 @@ export const create = mutation({
       encryptedMetadata: args.encryptedMetadata,
     });
 
-    // Schedule AI tag generation in background (non-blocking)
+    // Schedule AI enrichment in background (non-blocking)
     if (args.plaintextContent && process.env.PERPLEXITY_API_KEY) {
       await ctx.scheduler.runAfter(
         0,
@@ -93,6 +93,16 @@ export const create = mutation({
           content: args.plaintextContent,
           title: args.title,
           totalContexts,
+        }
+      );
+
+      await ctx.scheduler.runAfter(
+        0,
+        internal.ai.generateAndUpdateSummary,
+        {
+          contextId,
+          content: args.plaintextContent,
+          title: args.title,
         }
       );
     }

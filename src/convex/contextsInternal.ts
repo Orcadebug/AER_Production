@@ -17,6 +17,21 @@ export const updateTags = internalMutation({
 });
 
 /**
+ * Internal mutation to update summary on a context
+ */
+export const updateSummary = internalMutation({
+  args: {
+    contextId: v.id("contexts"),
+    summary: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.contextId, {
+      encryptedSummary: { ciphertext: args.summary, nonce: "plain" },
+    });
+  },
+});
+
+/**
  * Internal query to get all contexts for a user
  */
 export const getAllContextsForUser = internalQuery({

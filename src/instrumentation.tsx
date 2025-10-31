@@ -9,6 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Dialog } from "@radix-ui/react-dialog";
 import { ChevronDown, ExternalLink } from "lucide-react";
@@ -72,6 +73,7 @@ function ErrorDialog({
       <DialogContent className="bg-red-700 text-white max-w-4xl">
         <DialogHeader>
           <DialogTitle>Runtime Error</DialogTitle>
+          <DialogDescription>A runtime error occurred in the application.</DialogDescription>
         </DialogHeader>
         A runtime error occurred. Open the {APP_CONFIG.appName} editor to automatically debug the
         error, or check the console for more details.
@@ -179,11 +181,20 @@ export function InstrumentationProvider({
     const handleError = async (event: ErrorEvent) => {
       try {
         console.log(event);
+        const msg = event.message || "";
+        const file = event.filename || "";
+        const isThirdPartyNoise =
+          msg.includes("SES_UNCAUGHT_EXCEPTION") ||
+          file.includes("lockdown-install.js");
+        if (isThirdPartyNoise) {
+          // Likely from a browser extension (e.g., MetaMask SES); ignore
+          return;
+        }
         event.preventDefault();
         setError({
-          error: event.message,
+          error: msg,
           stack: event.error?.stack || "",
-          filename: event.filename || "",
+          filename: file,
           lineno: event.lineno,
           colno: event.colno,
         });

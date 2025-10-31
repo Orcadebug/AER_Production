@@ -470,6 +470,7 @@ export default function Dashboard() {
                 <form onSubmit={handleAddProject}>
                   <DialogHeader>
                     <DialogTitle>Create Project</DialogTitle>
+                    <DialogDescription>Fill in the details to create a new project.</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <Input name="name" placeholder="Project name" required />
@@ -495,6 +496,7 @@ export default function Dashboard() {
                 <form onSubmit={handleAddTag}>
                   <DialogHeader>
                     <DialogTitle>Create Tag</DialogTitle>
+                    <DialogDescription>Add a short name for your new tag.</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <Input name="name" placeholder="Tag name" required />

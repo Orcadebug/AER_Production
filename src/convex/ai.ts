@@ -63,6 +63,8 @@ Tags:`;
         .split(",")
         .map((tag: string) => tag.trim().toLowerCase())
         .filter((tag: string) => tag.length > 0)
+        // de-duplicate while preserving order
+        .filter((tag: string, idx: number, arr: string[]) => arr.indexOf(tag) === idx)
         .slice(0, maxTags);
 
       return tags;
@@ -136,6 +138,33 @@ export const generateAndUpdateTags = internalAction({
       });
     } catch (error) {
       console.error("Failed to generate and update tags:", error);
+    }
+  },
+});
+
+/**
+ * Generate summary and update the context (stores as a "plain" envelope)
+ */
+export const generateAndUpdateSummary = internalAction({
+  args: {
+    contextId: v.id("contexts"),
+    content: v.string(),
+    title: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const summary = await ctx.runAction(internal.ai.generateSummary, {
+        content: args.content,
+        title: args.title,
+      });
+
+      // Update the context with generated summary as a plain envelope
+      await ctx.runMutation(internal.contextsInternal.updateSummary, {
+        contextId: args.contextId,
+        summary,
+      });
+    } catch (error) {
+      console.error("Failed to generate and update summary:", error);
     }
   },
 });
