@@ -4,7 +4,7 @@
 // ============================================
 // CONFIGURATION - UPDATE THESE VALUES
 // ============================================
-const AER_API_ENDPOINT = 'https://different-bandicoot-508.convex.site/api/context/upload';
+const AER_API_ENDPOINT = 'https://brilliant-caribou-800.convex.site/api/context/upload';
 const API_TOKEN = ''; // Will be loaded from storage
 
 // ============================================
