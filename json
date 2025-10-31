@@ -1,4 +1,10 @@
-"host_permissions": [
-  "https://*.convex.cloud/*",
-  "https://*.convex.site/*"
-]
+{
+  "title": "Page Title",
+  "type": "web",
+  "url": "https://example.com",
+  "plaintext": "Page content here...",
+  "metadata": {
+    "source": "chrome-extension",
+    "capturedAt": 1234567890
+  }
+}
