@@ -11,19 +11,27 @@ export function useAuth() {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  // This effect updates the loading state once auth is loaded and user data is available
-  // It ensures we only show content when both authentication state and user data are ready
   useEffect(() => {
-    // Auth loading is done when isAuthLoading is false
-    // User query is done when user is not undefined (can be null for unauthenticated users)
+    // Stop loading when auth state is ready
     if (!isAuthLoading) {
-      // If authenticated, wait for user data to be available (not undefined)
-      if (isAuthenticated && user !== undefined) {
+      // If not authenticated, we're done loading immediately
+      if (!isAuthenticated) {
         setIsLoading(false);
       }
-      // If not authenticated, don't wait for user data
-      else if (!isAuthenticated) {
-        setIsLoading(false);
+      // If authenticated, wait for user query to complete (user !== undefined)
+      // OR set a timeout to prevent infinite loading
+      else if (isAuthenticated) {
+        if (user !== undefined) {
+          setIsLoading(false);
+        } else {
+          // Set a timeout as fallback to prevent infinite loading
+          // if user query takes too long or fails
+          const timeout = setTimeout(() => {
+            setIsLoading(false);
+          }, 3000);
+
+          return () => clearTimeout(timeout);
+        }
       }
     }
   }, [isAuthLoading, isAuthenticated, user]);
