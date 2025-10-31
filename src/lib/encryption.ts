@@ -105,6 +105,11 @@ export function decryptData(
   secretKey: string
 ): string | null {
   try {
+    // Support "plain" envelopes used by server fallbacks/AI enrichment
+    if (encryptedData?.nonce === "plain") {
+      return encryptedData.ciphertext;
+    }
+
     const ciphertext = decodeBase64(encryptedData.ciphertext);
     const nonce = decodeBase64(encryptedData.nonce);
     const keyUint8 = decodeBase64(secretKey);
