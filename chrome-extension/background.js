@@ -1,5 +1,5 @@
   try {
-    // Prepare upload data with correct field mapping for backend
+    // Prepare upload data with correct field mapping
     const uploadData = {
       type: 'web',
       title: payload.title || 'Untitled',
@@ -8,7 +8,13 @@
       metadata: payload.metadata || {},
     };
 
-    console.log('[Upload] Sending data:', uploadData);
+    // Debug logging to verify data structure
+    console.log('[Upload] Sending data:', {
+      hasTitle: !!uploadData.title,
+      hasPlaintext: !!uploadData.plaintext,
+      plaintextLength: uploadData.plaintext?.length || 0,
+      url: uploadData.url
+    });
 
     const res = await fetch(`${apiUrl}/api/context/upload`, {
       method: 'POST',
