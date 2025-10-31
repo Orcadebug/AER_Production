@@ -1,84 +1,162 @@
-// ... keep existing code (imports, state, DEFAULT_API_URL, etc.)
+/**
+ * Aer Chrome Extension - Background Service Worker
+ * - Robust defaults for API URL and token loading
+ * - Handles messages: checkConnection, openAuth, capture, captureContent
+ * - Uploads to /api/context/upload with Bearer token (aer_{userId})
+ */
 
-async function uploadToAer(payload) {
-  try {
-    // Debug: Log what we're about to send
-    console.log('[Upload] Original payload:', payload);
+const DEFAULT_API_URL = 'https://different-bandicoot-508.convex.site';
 
-    // Ensure we have valid data
-    if (!payload) {
-      throw new Error('No data provided for upload');
+// In-memory state
+let state = {
+  apiUrl: DEFAULT_API_URL,
+  authToken: null,
+};
+
+// Load configuration from storage with safe defaults and backward compatibility
+async function loadConfig() {
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.local.get(['apiUrl', 'apiBaseUrl', 'authToken', 'token'], (result) => {
+        const apiUrl = result.apiUrl || result.apiBaseUrl || DEFAULT_API_URL;
+        const authToken = result.authToken || result.token || null;
+
+        state.apiUrl = apiUrl || DEFAULT_API_URL;
+        state.authToken = authToken || null;
+
+        console.log('[Init] Configuration loaded:', {
+          apiUrl: state.apiUrl,
+          hasToken: !!state.authToken,
+        });
+        resolve(state);
+      });
+    } catch (e) {
+      console.warn('[Init] Failed to load config from storage, using defaults', e);
+      state.apiUrl = DEFAULT_API_URL;
+      state.authToken = null;
+      resolve(state);
     }
+  });
+}
 
-    // Prepare the upload data with proper field mapping
+// Save configuration back to storage (only fields provided)
+async function saveConfig(partial) {
+  return new Promise((resolve) => {
+    const payload = {};
+    if (partial.apiUrl !== undefined) payload.apiUrl = partial.apiUrl;
+    if (partial.authToken !== undefined) payload.authToken = partial.authToken;
+
+    chrome.storage.local.set(payload, () => {
+      if (partial.apiUrl !== undefined) state.apiUrl = partial.apiUrl || DEFAULT_API_URL;
+      if (partial.authToken !== undefined) state.authToken = partial.authToken || null;
+      resolve(true);
+    });
+  });
+}
+
+// Ensure defaults on install/startup
+chrome.runtime.onInstalled.addListener(async () => {
+  await loadConfig();
+  if (!state.apiUrl) await saveConfig({ apiUrl: DEFAULT_API_URL });
+  console.log('[Background] Installed. API URL set to:', state.apiUrl || DEFAULT_API_URL);
+});
+
+chrome.runtime.onStartup.addListener(async () => {
+  await loadConfig();
+  if (!state.apiUrl) await saveConfig({ apiUrl: DEFAULT_API_URL });
+  console.log('[Background] Startup. API URL:', state.apiUrl || DEFAULT_API_URL);
+});
+
+console.log('[Background] Service worker initialized');
+
+// Helper: Check connection status (local validation)
+async function checkConnection() {
+  // Always refresh state to get latest saved values
+  await loadConfig();
+
+  const hasToken = !!state.authToken;
+  const url = state.apiUrl || DEFAULT_API_URL;
+
+  console.log(
+    '[checkConnection] Checking auth with token:',
+    hasToken ? '✅ Present' : '❌ No token'
+  );
+  console.log('[checkConnection] API URL:', url || DEFAULT_API_URL);
+
+  if (!hasToken) {
+    console.warn('[checkConnection] ⚠️ No auth token found. User must set up authentication first.');
+    return { success: true, hasToken: false, apiUrl: url || DEFAULT_API_URL };
+  }
+
+  return { success: true, hasToken: true, apiUrl: url || DEFAULT_API_URL };
+}
+
+// Helper: Open the auth page
+async function openAuthPage() {
+  const authUrl = chrome.runtime.getURL('auth.html');
+  await chrome.tabs.create({ url: authUrl });
+  return { success: true };
+}
+
+// Helper: Upload payload to Aer
+async function uploadToAer(payload) {
+  // Refresh in case settings changed
+  await loadConfig();
+
+  const apiUrl = state.apiUrl || DEFAULT_API_URL;
+  const token = state.authToken;
+
+  if (!token) {
+    return { success: false, error: 'No auth token configured. Please run Setup Authentication.' };
+  }
+
+  try {
+    // Map content to plaintext for backend compatibility
     const uploadData = {
+      type: 'web',
       title: payload.title || 'Untitled',
-      type: payload.type || 'web',
       url: payload.url || '',
-      // Send as 'plaintext' field (backend prioritizes this)
       plaintext: payload.content || payload.plaintext || '',
       metadata: payload.metadata || {},
     };
 
-    // Validate that we have content
-    if (!uploadData.plaintext || uploadData.plaintext.trim().length === 0) {
-      throw new Error('No content to upload');
-    }
+    console.log('[Upload] Sending payload:', uploadData);
 
-    console.log('[Upload] Formatted payload:', uploadData);
-
-    const response = await fetch(`${state.apiUrl}/api/context/upload`, {
+    const res = await fetch(`${apiUrl}/api/context/upload`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${state.authToken}`,
+        // token format must be aer_{userId}
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(uploadData),
     });
 
-    console.log('[Upload] Response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Upload] Error response:', errorText);
-      
-      let errorMessage = `Upload failed (${response.status})`;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage += `: ${errorJson.error || JSON.stringify(errorJson)}`;
-      } catch {
-        errorMessage += `: ${errorText}`;
-      }
-      
-      throw new Error(errorMessage);
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Upload failed (${res.status}): ${text || res.statusText}`);
     }
 
-    const result = await response.json();
-    console.log('[Upload] Success:', result);
-    
-    return { success: true, result };
-  } catch (error) {
-    console.error('[Upload] Error:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : String(error) 
-    };
+    const data = await res.json().catch(() => ({}));
+    console.log('[Upload] Success:', data);
+    return { success: true, data };
+  } catch (err) {
+    console.error('[Upload] Error:', err);
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
-// ... keep existing code (checkConnection, openAuthPage, saveConfig, loadConfig)
-
-// Message listener
+// Message handler
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   try {
-    console.log('[Background] Received message:', request.action);
+    console.log('[Background] Received message:', request?.action);
 
     if (request.action === 'checkConnection') {
       (async () => {
         const result = await checkConnection();
         sendResponse(result);
       })();
-      return true;
+      return true; // keep message channel open
     }
 
     if (request.action === 'openAuth') {
@@ -91,21 +169,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     if (request.action === 'capture' || request.action === 'captureContent') {
       (async () => {
-        // Prepare payload with proper field mapping
         const payload = {
           url: request.url || '',
           title: request.title || 'Untitled',
-          content: request.content || request.plaintext || '',
-          type: 'web',
-          metadata: {
-            source: 'chrome-extension',
-            capturedAt: Date.now(),
-            ...(request.metadata || {}),
-          },
+          content: request.content || '',
+          metadata: request.metadata || {},
         };
-
-        console.log('[Background] Capture payload:', payload);
-        
         const result = await uploadToAer(payload);
         sendResponse(result);
       })();
@@ -122,6 +191,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
     }
 
+    // Unknown action
     sendResponse({ success: false, error: 'Unknown action' });
     return false;
   } catch (e) {
@@ -130,5 +200,3 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return false;
   }
 });
-
-// ... keep existing code (initialization)
