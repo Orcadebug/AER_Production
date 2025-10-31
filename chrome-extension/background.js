@@ -1,5 +1,4 @@
-  try {
-    // Prepare upload data with correct field mapping
+    // Prepare upload data with correct field mapping for backend
     const uploadData = {
       type: 'web',
       title: payload.title || 'Untitled',
