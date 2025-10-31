@@ -39,7 +39,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const formData = new FormData(event.currentTarget);
       const email = formData.get("email") as string;
@@ -64,13 +64,13 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       formData.append("flow", isSignUp ? "signUp" : "signIn");
 
       await signIn("password", formData);
-      
-      const redirect = redirectAfterAuth || "/";
-      navigate(redirect);
+
+      // Don't navigate here - let the useEffect handle it once isAuthenticated becomes true
+      // This prevents race conditions where we navigate before auth state is fully updated
     } catch (error) {
       console.error("Authentication error:", error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      
+
       // Check if the error indicates the user doesn't exist
       if (!isSignUp && errorMessage.includes("InvalidSecret")) {
         setError("No account found with this email. Please sign up first.");
