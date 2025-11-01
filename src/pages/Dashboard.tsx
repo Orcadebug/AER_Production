@@ -370,7 +370,7 @@ export default function Dashboard() {
       <header className="border-b bg-card sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.svg" alt="Aer" className="h-8 w-8 cursor-pointer" onClick={() => navigate("/")} />
+            <img src="/logo.png" alt="Aer" className="h-8 w-8 cursor-pointer" onClick={() => navigate("/")} />
             <h1 className="text-2xl font-bold tracking-tight">Aer</h1>
             <Badge variant="secondary" className="ml-2">
               <Lock className="h-3 w-3 mr-1" />
@@ -653,6 +653,15 @@ export default function Dashboard() {
                           {tag}
                         </Badge>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedContext.encryptedSummary && (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Summary</h4>
+                    <div className="bg-muted p-4 rounded-lg whitespace-pre-wrap text-sm">
+                      {getDecryptedSummary(selectedContext)}
                     </div>
                   </div>
                 )}

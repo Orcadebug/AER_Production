@@ -10,7 +10,7 @@ export default function Terms() {
       <header className="border-b bg-card sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.svg" alt="Aer" className="h-8 w-8 cursor-pointer" onClick={() => navigate("/")} />
+<img src="/logo.png" alt="Aer" className="h-8 w-8 cursor-pointer" onClick={() => navigate("/")} />
             <h1 className="text-2xl font-bold tracking-tight">Terms of Service</h1>
           </div>
           <Button variant="outline" size="sm" onClick={() => navigate("/")}>
