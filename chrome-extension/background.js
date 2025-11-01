@@ -284,19 +284,43 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'getSettings':
       sendResponse({ success: true, settings: extensionSettings });
       break;
-      
+
     case 'updateSettings':
       extensionSettings = { ...extensionSettings, ...request.settings };
       chrome.storage.local.set({ settings: extensionSettings });
       sendResponse({ success: true });
       break;
-      
+
+    case 'openAuth': {
+      const url = chrome.runtime.getURL('auth.html');
+      chrome.tabs.create({ url }, () => sendResponse({ success: true }));
+      return true;
+    }
+
+    case 'checkConnection': {
+      chrome.storage.local.get(['authToken', 'token'], (res) => {
+        const hasToken = Boolean(res.authToken || res.token);
+        sendResponse({ success: true, hasToken });
+      });
+      return true;
+    }
+
+    case 'capture': {
+      // Basic capture: upload current page URL/title
+      const { url, title } = request;
+      const payload = { content: `Page: ${title}\nURL: ${url}`, metadata: { source: 'popup_capture' } };
+      uploadToAer(payload)
+        .then((result) => sendResponse({ success: true, result }))
+        .catch((error) => sendResponse({ success: false, error: error.message }));
+      return true;
+    }
+
     case 'testConnection':
       fetch(AER_API_ENDPOINT, { method: 'OPTIONS' })
         .then(() => sendResponse({ success: true, message: 'Connection successful' }))
         .catch(error => sendResponse({ success: false, error: error.message }));
       return true;
-      
+
     default:
       sendResponse({ success: false, error: 'Unknown action: ' + request.action });
   }

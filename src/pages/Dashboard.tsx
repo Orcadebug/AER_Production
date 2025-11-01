@@ -113,8 +113,8 @@ export default function Dashboard() {
             context.tags.forEach((tag: string) => {
               const tagIndex = relevantTags.indexOf(tag);
               if (tagIndex !== -1) {
-                // Higher score for more relevant tags (earlier in the list)
-                score += (relevantTags.length - tagIndex) * 10;
+                // Weight later tags higher in case AI returns least→most relevance
+                score += (tagIndex + 1) * 10;
               }
             });
 
