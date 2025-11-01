@@ -6,5 +6,11 @@
   "devCommand": "pnpm dev",
   "env": {
     "VITE_CONVEX_URL": "https://brilliant-caribou-800.convex.cloud"
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
