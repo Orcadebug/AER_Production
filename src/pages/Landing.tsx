@@ -68,6 +68,34 @@ export default function Landing() {
         </motion.div>
       </section>
 
+      {/* Pricing Section */}
+      <section className="container mx-auto px-4 py-16 border-t">
+        <h2 className="text-4xl font-bold tracking-tight text-center mb-10">Simple pricing</h2>
+        <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          <div className="border rounded-xl p-6">
+            <h3 className="text-xl font-semibold mb-2">Free</h3>
+            <p className="text-muted-foreground mb-4">Start building your encrypted knowledge base</p>
+            <ul className="text-sm space-y-2 mb-6">
+              <li>• AI search (30 Perplexity calls / month)</li>
+              <li>• Notes, files, web captures</li>
+              <li>• Basic tags and projects</li>
+            </ul>
+            <Button variant="outline" onClick={() => navigate("/auth")}>Get started</Button>
+          </div>
+          <div className="border rounded-xl p-6">
+            <h3 className="text-xl font-semibold mb-2">Pro</h3>
+            <div className="text-3xl font-bold mb-2">$9<span className="text-base font-normal">/mo</span></div>
+            <p className="text-muted-foreground mb-4">Power user limits and priority AI</p>
+            <ul className="text-sm space-y-2 mb-6">
+              <li>• AI search (300 Perplexity calls / month)</li>
+              <li>• Higher storage limits</li>
+              <li>• Priority processing</li>
+            </ul>
+            <Button className="bg-[#8BA888] hover:bg-[#7A9777]" onClick={() => navigate("/auth")}>Upgrade</Button>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section className="container mx-auto px-4 py-20 border-t">
         <motion.div

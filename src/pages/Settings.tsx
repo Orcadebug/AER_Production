@@ -20,6 +20,7 @@ export default function Settings() {
   const [tokenCopied, setTokenCopied] = useState(false);
   
   const userStats = useQuery(api.admin.getUserStats);
+  const myUsage = useQuery(api.entitlements.getMyUsage);
   const deleteAllData = useMutation(api.admin.deleteAllUserData);
   const updateFeedbackStatus = useMutation(api.feedback.updateStatus);
   
@@ -181,6 +182,44 @@ export default function Settings() {
                       </div>
                     </>
                   )}
+                </CardContent>
+              </Card>
+
+              {/* Plan & Usage */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Plan & Usage</CardTitle>
+                  <CardDescription>Manage your membership tier and usage limits</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Current Plan</span>
+                    <Badge variant="secondary">{user?.membershipTier || "free"}</Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {myUsage ? (
+                      <>Usage: {myUsage.usedPerplexity}/{myUsage.allowedPerplexity} Perplexity calls this month</>
+                    ) : (
+                      <>Perplexity monthly limit: Free 30 · Pro 300 · Owner unlimited</>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      className="bg-[#8BA888] hover:bg-[#7A9777]"
+                      onClick={async () => {
+                        // Create a checkout session for Pro
+                        try {
+                          const res = await fetch("/api/pay/checkout", { method: "POST" });
+                          const data = await res.json();
+                          if (data.url) window.location.href = data.url;
+                        } catch (e) {
+                          toast.error("Failed to start checkout");
+                        }
+                      }}
+                    >
+                      Upgrade to Pro ($9/mo)
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 

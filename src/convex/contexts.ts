@@ -83,12 +83,25 @@ export const create = mutation({
       encryptedMetadata: args.encryptedMetadata,
     });
 
+    // Track approximate storage usage
+    try {
+      const bytes =
+        (encContent?.ciphertext?.length || 0) +
+        (encTitle?.ciphertext?.length || 0) +
+        (encSummary?.ciphertext?.length || 0);
+      await ctx.scheduler.runAfter(0, internal.entitlements.addStorageBytes, {
+        userId: user._id,
+        bytes,
+      });
+    } catch {}
+
     // Schedule AI enrichment in background (non-blocking)
     if (args.plaintextContent && process.env.PERPLEXITY_API_KEY) {
       await ctx.scheduler.runAfter(
         0,
         internal.ai.generateAndUpdateTags,
         {
+          userId: user._id,
           contextId,
           content: args.plaintextContent,
           title: args.title,
@@ -100,6 +113,7 @@ export const create = mutation({
         0,
         internal.ai.generateAndUpdateSummary,
         {
+          userId: user._id,
           contextId,
           content: args.plaintextContent,
           title: args.title,

@@ -75,12 +75,14 @@ export const createForUser = internalMutation({
     // Schedule AI enrichment if plaintext available
     if (args.plaintextContent && process.env.PERPLEXITY_API_KEY) {
       await ctx.scheduler.runAfter(0, internal.ai.generateAndUpdateTags, {
+        userId: args.userId,
         contextId,
         content: args.plaintextContent,
         title: args.title,
         totalContexts,
       });
       await ctx.scheduler.runAfter(0, internal.ai.generateAndUpdateSummary, {
+        userId: args.userId,
         contextId,
         content: args.plaintextContent,
         title: args.title,

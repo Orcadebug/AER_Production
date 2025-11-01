@@ -28,6 +28,17 @@ const schema = defineSchema(
       emailVerificationTime: v.optional(v.number()),
       isAnonymous: v.optional(v.boolean()),
       role: v.optional(roleValidator),
+      // Billing / membership tier
+      membershipTier: v.optional(
+        v.union(
+          v.literal("free"),
+          v.literal("beta"),
+          v.literal("pro"),
+          v.literal("owner")
+        )
+      ),
+      stripeCustomerId: v.optional(v.string()),
+      stripeSubscriptionId: v.optional(v.string()),
       // Encryption key metadata (not the actual key - stored client-side only)
       encryptionKeyVersion: v.optional(v.number()),
       lastKeyRotation: v.optional(v.number()),
@@ -101,6 +112,14 @@ const schema = defineSchema(
         searchField: "title",
         filterFields: ["userId"],
       }),
+
+    // Usage tracking (monthly window)
+    usage: defineTable({
+      userId: v.id("users"),
+      monthStart: v.number(), // epoch ms at start of month
+      perplexityCalls: v.number(),
+      storageBytes: v.number(),
+    }).index("by_user_month", ["userId", "monthStart"]),
 
     // Feedback and support tickets
     feedback: defineTable({

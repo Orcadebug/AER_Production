@@ -91,6 +91,7 @@ export default function Dashboard() {
 
         // Use AI to match query to relevant tags
         const relevantTags = await matchQueryToTags({
+          userId: user!._id,
           query: searchQuery,
           allTags: Array.from(allTags),
         });

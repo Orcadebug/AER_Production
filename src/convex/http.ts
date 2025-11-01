@@ -2,6 +2,8 @@ import { httpRouter } from "convex/server";
 import { auth } from "./auth";
 import { uploadContext, batchUploadContexts } from "./httpApi";
 import { mcpEndpoint } from "./mcp/index";
+import { stripeWebhook } from "./paymentsWebhook";
+import { createProCheckout } from "./payApi";
 
 const http = httpRouter();
 
@@ -19,6 +21,20 @@ http.route({
   path: "/api/context/batch-upload",
   method: "POST",
   handler: batchUploadContexts,
+});
+
+// Payments webhook
+http.route({
+  path: "/api/stripe/webhook",
+  method: "POST",
+  handler: stripeWebhook,
+});
+
+// Create checkout session
+http.route({
+  path: "/api/pay/checkout",
+  method: "POST",
+  handler: createProCheckout,
 });
 
 // MCP endpoint for AI assistants

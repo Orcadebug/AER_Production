@@ -118,6 +118,7 @@ Provide only the summary, no additional text or formatting:`;
  */
 export const generateAndUpdateTags = internalAction({
   args: {
+    userId: v.id("users"),
     contextId: v.id("contexts"),
     content: v.string(),
     title: v.string(),
@@ -125,6 +126,12 @@ export const generateAndUpdateTags = internalAction({
   },
   handler: async (ctx, args) => {
     try {
+      // Enforce usage limits
+      const allowed = await ctx.runQuery(internal.entitlements.assertPerplexityAllowed, { userId: args.userId });
+      if (!allowed.ok) {
+        throw new Error(`Perplexity usage exceeded ${allowed.used}/${allowed.allowed}`);
+      }
+
       const tags = await ctx.runAction(internal.ai.generateTags, {
         content: args.content,
         title: args.title,
@@ -136,6 +143,8 @@ export const generateAndUpdateTags = internalAction({
         contextId: args.contextId,
         tags,
       });
+      // Increment usage on success
+      await ctx.runMutation(internal.entitlements.incrementPerplexity, { userId: args.userId, amount: 1 });
     } catch (error) {
       console.error("Failed to generate and update tags:", error);
     }
@@ -147,12 +156,19 @@ export const generateAndUpdateTags = internalAction({
  */
 export const generateAndUpdateSummary = internalAction({
   args: {
+    userId: v.id("users"),
     contextId: v.id("contexts"),
     content: v.string(),
     title: v.string(),
   },
   handler: async (ctx, args) => {
     try {
+      // Enforce usage limits
+      const allowed = await ctx.runQuery(internal.entitlements.assertPerplexityAllowed, { userId: args.userId });
+      if (!allowed.ok) {
+        throw new Error(`Perplexity usage exceeded ${allowed.used}/${allowed.allowed}`);
+      }
+
       const summary = await ctx.runAction(internal.ai.generateSummary, {
         content: args.content,
         title: args.title,
@@ -163,6 +179,8 @@ export const generateAndUpdateSummary = internalAction({
         contextId: args.contextId,
         summary,
       });
+      // Increment usage on success
+      await ctx.runMutation(internal.entitlements.incrementPerplexity, { userId: args.userId, amount: 1 });
     } catch (error) {
       console.error("Failed to generate and update summary:", error);
     }
@@ -218,6 +236,11 @@ If an item is completely irrelevant, exclude it.
 
 Ranking:`;
 
+      const allowed = await ctx.runQuery(internal.entitlements.assertPerplexityAllowed, { userId: args.userId });
+      if (!allowed.ok) {
+        return allContexts.map((c: any) => c._id); // fallback to default order if not allowed
+      }
+
       const perplexity = getPerplexity();
       const response = await perplexity.chat.completions.create({
         model: "sonar",
@@ -226,6 +249,7 @@ Ranking:`;
         max_tokens: 100,
       });
 
+      await ctx.runMutation(internal.entitlements.incrementPerplexity, { userId: args.userId, amount: 1 });
       const content = response.choices[0]?.message?.content;
       const rankingText = typeof content === "string" ? content.trim() : "";
       const rankings = rankingText
@@ -258,6 +282,7 @@ Ranking:`;
  */
 export const matchQueryToTags = action({
   args: {
+    userId: v.id("users"),
     query: v.string(),
     allTags: v.array(v.string()),
   },
@@ -282,6 +307,16 @@ Rules:
 
 Relevant tags:`;
 
+      const allowed = await ctx.runQuery(internal.entitlements.assertPerplexityAllowed, { userId: (args as any).userId });
+      if (!allowed.ok) {
+        // fallback to simple keyword matching
+        const queryLower = args.query.toLowerCase();
+        return args.allTags.filter((tag: string) => 
+          tag.toLowerCase().includes(queryLower) || 
+          queryLower.includes(tag.toLowerCase())
+        ).slice(0, 5);
+      }
+
       const perplexity = getPerplexity();
       const response = await perplexity.chat.completions.create({
         model: "sonar",
@@ -290,6 +325,7 @@ Relevant tags:`;
         max_tokens: 150,
       });
 
+      await ctx.runMutation(internal.entitlements.incrementPerplexity, { userId: (args as any).userId, amount: 1 });
       const content = response.choices[0]?.message?.content;
       const tagsText = typeof content === "string" ? content.trim() : "";
       const matchedTags = tagsText
