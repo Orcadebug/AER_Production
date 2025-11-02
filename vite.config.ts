@@ -54,13 +54,7 @@ export default defineConfig({
   build: {
     // Security: Enable source maps only in development
     sourcemap: process.env.NODE_ENV === "development",
-    // Minify and obfuscate production code
-    minify: "terser",
-    terserOptions: {
-      compress: {
-        drop_console: process.env.NODE_ENV === "production",
-        drop_debugger: true,
-      },
-    },
+    // Use default esbuild minification (no terser dependency)
+    minify: "esbuild",
   },
 });

@@ -50,8 +50,8 @@ export class ErrorBoundary extends Component<Props, State> {
     if (process.env.NODE_ENV === "production") {
       this.sendToMonitoring({
         message: error.message,
-        stack: error.stack,
-        componentStack: errorInfo.componentStack,
+        stack: error.stack ?? undefined,
+        componentStack: errorInfo.componentStack ?? undefined,
       });
     }
   }
