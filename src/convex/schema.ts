@@ -131,7 +131,25 @@ const schema = defineSchema(
       status: v.union(v.literal("open"), v.literal("in_progress"), v.literal("resolved"), v.literal("closed")),
     }).index("by_user", ["userId"]),
 
-    // Audit log for encryption events
+    // Comprehensive audit log for security and compliance
+    audit_logs: defineTable({
+      timestamp: v.number(),
+      userId: v.optional(v.id("users")),
+      action: v.string(), // e.g., AUTH_LOGIN, DATA_CREATE, etc.
+      resource: v.optional(v.string()), // Resource type (users, projects, etc.)
+      resourceId: v.optional(v.string()), // Specific resource ID
+      result: v.string(), // SUCCESS, FAILURE, WARNING
+      metadata: v.optional(v.any()), // Additional sanitized context
+      ipAddress: v.optional(v.string()),
+      userAgent: v.optional(v.string()),
+      sessionId: v.optional(v.string()),
+    })
+      .index("by_user", ["userId"])
+      .index("by_timestamp", ["timestamp"])
+      .index("by_action", ["action"])
+      .index("by_user_timestamp", ["userId", "timestamp"]),
+
+    // Legacy audit log (kept for backwards compatibility)
     auditLog: defineTable({
       userId: v.id("users"),
       action: v.string(),
@@ -145,6 +163,29 @@ const schema = defineSchema(
     })
       .index("by_user", ["userId"])
       .index("by_timestamp", ["timestamp"]),
+
+    // Rate limiting tracking
+    rate_limits: defineTable({
+      identifier: v.string(), // userId, IP, or other identifier
+      count: v.number(),
+      resetTime: v.number(),
+      blocked: v.boolean(),
+      blockUntil: v.optional(v.number()),
+    }).index("by_identifier", ["identifier"]),
+
+    // Security events for monitoring
+    security_events: defineTable({
+      timestamp: v.number(),
+      eventType: v.string(), // FAILED_LOGIN, SUSPICIOUS_ACTIVITY, etc.
+      severity: v.string(), // LOW, MEDIUM, HIGH, CRITICAL
+      userId: v.optional(v.id("users")),
+      ipAddress: v.optional(v.string()),
+      details: v.any(),
+      resolved: v.boolean(),
+    })
+      .index("by_timestamp", ["timestamp"])
+      .index("by_severity", ["severity"])
+      .index("by_resolved", ["resolved"]),
   },
   {
     schemaValidation: false,
