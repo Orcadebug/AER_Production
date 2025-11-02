@@ -32,6 +32,7 @@ import type * as payments from "../payments.js";
 import type * as paymentsInternal from "../paymentsInternal.js";
 import type * as paymentsWebhook from "../paymentsWebhook.js";
 import type * as projects from "../projects.js";
+import type * as projectsInternal from "../projectsInternal.js";
 import type * as redeem from "../redeem.js";
 import type * as tags from "../tags.js";
 import type * as users from "../users.js";
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   paymentsInternal: typeof paymentsInternal;
   paymentsWebhook: typeof paymentsWebhook;
   projects: typeof projects;
+  projectsInternal: typeof projectsInternal;
   redeem: typeof redeem;
   tags: typeof tags;
   users: typeof users;

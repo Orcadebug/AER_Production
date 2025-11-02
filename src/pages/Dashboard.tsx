@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useEncryption } from "@/hooks/use-encryption";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
-import { FileText, Loader2, LogOut, Plus, Search, Upload, X, FolderOpen, Tag as TagIcon, Lock, Copy, ExternalLink } from "lucide-react";
+import { FileText, Loader2, LogOut, Plus, Search, Upload, X, FolderOpen, Tag as TagIcon, Lock, Copy, ExternalLink, Trash2, Edit } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -33,6 +33,11 @@ export default function Dashboard() {
   const [selectedContext, setSelectedContext] = useState<any | null>(null);
   const [aiSearchResults, setAiSearchResults] = useState<any[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [isManagingProjects, setIsManagingProjects] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState<string>("");
+  const [editContent, setEditContent] = useState<string>("");
+  const [editProject, setEditProject] = useState<string>("none");
 
   const contextsResult = useQuery(
     api.contexts.listPaginated,
@@ -53,6 +58,8 @@ export default function Dashboard() {
 
   const createContext = useMutation(api.contexts.create);
   const createProject = useMutation(api.projects.create);
+  const removeProject = useMutation(api.projects.remove);
+  const updateContext = useMutation(api.contexts.update);
   const createTag = useMutation(api.tags.create);
   const deleteContext = useMutation(api.contexts.remove);
   const generateUploadUrl = useMutation(api.contexts.generateUploadUrl);
@@ -491,6 +498,44 @@ export default function Dashboard() {
               </DialogContent>
             </Dialog>
 
+            <Dialog open={isManagingProjects} onOpenChange={setIsManagingProjects}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Manage Projects
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Manage Projects</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                  {projects?.map((p) => (
+                    <div key={p._id} className="flex items-center justify-between border rounded p-2">
+                      <div className="text-sm font-medium">{p.name}</div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={async () => {
+                          try {
+                            await removeProject({ id: p._id });
+                            toast.success("Project deleted");
+                          } catch {
+                            toast.error("Failed to delete project");
+                          }
+                        }}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {(!projects || projects.length === 0) && (
+                    <div className="text-sm text-muted-foreground">No projects yet</div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+
             <Dialog open={isAddingTag} onOpenChange={setIsAddingTag}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -690,21 +735,84 @@ export default function Dashboard() {
                 )}
               </div>
 
-              <DialogFooter className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => handleCopySummary(selectedContext)}
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy for LLM
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setSelectedContext(null)}
-                >
-                  Close
-                </Button>
-              </DialogFooter>
+              <div className="flex justify-between items-center mt-4">
+                {!isEditing ? (
+                  <Button variant="outline" onClick={() => {
+                    setIsEditing(true);
+                    setEditTitle(getDecryptedTitle(selectedContext));
+                    setEditContent(getDecryptedContent(selectedContext));
+                    setEditProject(selectedContext.projectId || "none");
+                  }}>
+                    <Edit className="h-4 w-4 mr-2" /> Edit
+                  </Button>
+                ) : (
+                  <div className="w-full space-y-3">
+                    <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+                    {selectedContext.type === "note" && (
+                      <Textarea rows={8} value={editContent} onChange={(e) => setEditContent(e.target.value)} />
+                    )}
+                    <Select value={editProject} onValueChange={(v) => setEditProject(v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select project" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No project</SelectItem>
+                        {projects?.map((p) => (
+                          <SelectItem key={p._id} value={p._id}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex gap-2">
+                      <Button
+                        className="bg-[#8BA888] hover:bg-[#7A9777]"
+                        onClick={async () => {
+                          try {
+                            const updates: any = { id: selectedContext._id, title: editTitle };
+                            // Encrypt fields if editing content
+                            if (selectedContext.type === "note") {
+                              const encContent = encrypt(editContent);
+                              const encTitle = encrypt(editTitle);
+                              const summary = editContent.length > 150 ? editContent.substring(0,150) + "..." : editContent;
+                              const encSummary = encrypt(summary);
+                              if (!encContent || !encTitle || !encSummary) {
+                                toast.error("Encryption failed");
+                                return;
+                              }
+                              updates.encryptedContent = encContent;
+                              updates.encryptedTitle = encTitle;
+                              updates.encryptedSummary = encSummary;
+                            } else {
+                              const encTitle = encrypt(editTitle);
+                              if (!encTitle) { toast.error("Encryption failed"); return; }
+                              updates.encryptedTitle = encTitle;
+                            }
+                            if (editProject !== "none") updates.projectId = editProject as any; else updates.projectId = undefined;
+                            await updateContext(updates);
+                            toast.success("Updated");
+                            setIsEditing(false);
+                          } catch {
+                            toast.error("Update failed");
+                          }
+                        }}
+                      >Save</Button>
+                      <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleCopySummary(selectedContext)}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy for LLM
+                  </Button>
+                  <Button variant="outline" onClick={() => setSelectedContext(null)}>
+                    Close
+                  </Button>
+                </div>
+              </div>
             </>
           )}
         </DialogContent>

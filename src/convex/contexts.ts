@@ -119,6 +119,17 @@ export const create = mutation({
           title: args.title,
         }
       );
+
+      await ctx.scheduler.runAfter(
+        0,
+        internal.ai.generateAndUpdateTitleAndProject,
+        {
+          userId: user._id,
+          contextId,
+          content: args.plaintextContent,
+          currentTitle: args.title,
+        }
+      );
     }
 
     // Log audit event

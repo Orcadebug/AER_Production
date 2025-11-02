@@ -87,6 +87,13 @@ export const createForUser = internalMutation({
         content: args.plaintextContent,
         title: args.title,
       });
+
+      await ctx.scheduler.runAfter(0, internal.ai.generateAndUpdateTitleAndProject, {
+        userId: args.userId,
+        contextId,
+        content: args.plaintextContent,
+        currentTitle: args.title,
+      });
     }
 
     // Audit
@@ -128,6 +135,37 @@ export const updateSummary = internalMutation({
   handler: async (ctx, args) => {
     await ctx.db.patch(args.contextId, {
       encryptedSummary: { ciphertext: args.summary, nonce: "plain" },
+    });
+  },
+});
+
+/**
+ * Internal mutation to update title on a context (also updates encryptedTitle envelope)
+ */
+export const updateTitle = internalMutation({
+  args: {
+    contextId: v.id("contexts"),
+    title: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.contextId, {
+      title: args.title,
+      encryptedTitle: { ciphertext: args.title, nonce: "plain" },
+    });
+  },
+});
+
+/**
+ * Internal mutation to update project assignment for a context
+ */
+export const updateProject = internalMutation({
+  args: {
+    contextId: v.id("contexts"),
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.contextId, {
+      projectId: args.projectId,
     });
   },
 });

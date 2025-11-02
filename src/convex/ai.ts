@@ -278,6 +278,118 @@ Ranking:`;
 });
 
 /**
+ * Generate a concise title and optionally assign to a project using existing project list.
+ */
+export const generateAndUpdateTitleAndProject = internalAction({
+  args: {
+    userId: v.id("users"),
+    contextId: v.id("contexts"),
+    content: v.string(),
+    currentTitle: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const allowed = await ctx.runQuery(internal.entitlements.assertPerplexityAllowed, { userId: args.userId });
+      if (!allowed.ok) {
+        return;
+      }
+
+      // Fetch user's existing projects
+      const projects = await ctx.runQuery(internal.projectsInternal.listForUser, { userId: args.userId });
+      const projectNames = projects.map((p: any) => p.name);
+
+      const contentPreview = args.content.substring(0, 1500);
+      const prompt = `You are helping organize personal notes.
+Given the content below and an optional current title, return a JSON object with a short, specific title (3-8 words) and the best matching project name from the provided list. If none fits, propose a concise new project name.
+
+Current title: ${args.currentTitle || "(none)"}
+Projects: ${projectNames.join(", ")}
+Content: ${contentPreview}
+
+Rules:
+- Title: 3-8 words, no quotes, no trailing punctuation.
+- Project: choose EXACTLY one existing project name from the list if it reasonably fits; otherwise, provide a new concise name.
+- Output strictly JSON: {"title":"...","project":"..."}`;
+
+      const perplexity = getPerplexity();
+      const response = await perplexity.chat.completions.create({
+        model: "sonar",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
+        max_tokens: 150,
+      });
+
+      const rawAny = response.choices[0]?.message?.content as any;
+      const raw = typeof rawAny === "string" ? rawAny : Array.isArray(rawAny) ? (rawAny[0]?.text || rawAny[0]?.content || "") : "";
+      let title: string | null = null;
+      let projectName: string | null = null;
+      try {
+        const parsed = JSON.parse(raw as string);
+        title = typeof (parsed as any).title === "string" ? (parsed as any).title.trim() : null;
+        projectName = typeof (parsed as any).project === "string" ? (parsed as any).project.trim() : null;
+      } catch {
+        // Fallback title from content
+        title = (args.currentTitle && (args.currentTitle as string).trim().length > 0)
+          ? (args.currentTitle as string)
+          : contentPreview.split(/\n|\.\s/)[0].slice(0, 60).trim();
+        projectName = null;
+      }
+
+      if (title && title.length > 0) {
+        await ctx.runMutation(internal.contextsInternal.updateTitle, { contextId: args.contextId, title });
+      }
+
+      // Match project by case-insensitive exact name or simple token overlap
+      if (projectName && projectName.length > 0) {
+        const lower = projectName.toLowerCase();
+        let target = projects.find((p: any) => p.name.toLowerCase() === lower);
+        if (!target) {
+          const tokens = (s: string) => new Set(s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean));
+          let best: any = null;
+          let bestScore = 0;
+          for (const p of projects) {
+            const a = tokens(projectName);
+            const b = tokens(p.name);
+            const inter = [...a].filter((t) => b.has(t)).length;
+            const union = new Set([...a, ...b]).size || 1;
+            const jaccard = inter / union;
+            if (jaccard > bestScore) {
+              bestScore = jaccard;
+              best = p;
+            }
+          }
+          if (best && bestScore >= 0.5) {
+            target = best;
+          }
+        }
+
+        let projectId: string | null = null;
+        if (target) {
+          projectId = target._id;
+        } else if (projectName && projectName.length >= 3) {
+          // Create new project for user
+          projectId = await ctx.runMutation(internal.projectsInternal.createForUser, {
+            userId: args.userId,
+            name: projectName.slice(0, 60),
+          });
+        }
+
+        if (projectId) {
+          await ctx.runMutation(internal.contextsInternal.updateProject, {
+            contextId: args.contextId,
+            projectId: projectId as any,
+          });
+        }
+      }
+
+      await ctx.runMutation(internal.entitlements.incrementPerplexity, { userId: args.userId, amount: 1 });
+    } catch (error) {
+      console.error("Failed to generate title/project:", error);
+    }
+  },
+});
+
+/**
  * Match a search query to relevant tags using AI
  */
 export const matchQueryToTags = action({
