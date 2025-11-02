@@ -226,9 +226,14 @@ const res = await fetch(endpoint, {
                             },
                           });
                           if (!res.ok) {
-                            const body = await res.text().catch(() => "");
-                            console.error("Checkout HTTP error:", res.status, body);
-                            toast.error(`Checkout failed (${res.status})`);
+                            const bodyText = await res.text().catch(() => "");
+                            console.error("Checkout HTTP error:", res.status, bodyText);
+                            try {
+                              const j = JSON.parse(bodyText);
+                              toast.error(j?.error || `Checkout failed (${res.status})`);
+                            } catch {
+                              toast.error(`Checkout failed (${res.status})`);
+                            }
                             return;
                           }
                           let data: any = null;
