@@ -50,7 +50,15 @@ export const createProCheckout = httpAction(async (ctx, req) => {
     }
     const userId = token.substring(4) as any;
 
-    const url = await ctx.runAction(api.payments.createCheckoutSession as any, {
+    // Fail fast if Stripe is not configured on this deployment
+    if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_PRICE_PRO || !process.env.SITE_URL) {
+      return new Response(JSON.stringify({ error: "Stripe not configured for this deployment" }), {
+        status: 501,
+        headers: { "Content-Type": "application/json", ...buildCorsHeaders(origin) },
+      });
+    }
+
+    const url = await ctx.runAction((api as any).payments.createCheckoutSession, {
       userId,
       priceId: process.env.STRIPE_PRICE_PRO as string,
       successUrl: `${process.env.SITE_URL || ''}/settings?upgrade=success`,
