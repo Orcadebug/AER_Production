@@ -160,7 +160,9 @@ export function InstrumentationProvider({
         const isThirdPartyNoise =
           msg.includes("SES_UNCAUGHT_EXCEPTION") ||
           file.includes("lockdown-install.js") ||
-          msg.includes("InvalidAccountId");
+          msg.includes("InvalidAccountId") ||
+          msg.includes("ResizeObserver loop limit exceeded") ||
+          msg.includes("ResizeObserver loop completed with undelivered notifications");
         if (isThirdPartyNoise) {
           // Likely from a browser extension (e.g., MetaMask SES); ignore entirely (no console noise)
           return;
