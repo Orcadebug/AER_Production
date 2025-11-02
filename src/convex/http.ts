@@ -3,7 +3,7 @@ import { auth } from "./auth";
 import { uploadContext, batchUploadContexts } from "./httpApi";
 import { mcpEndpoint } from "./mcp/index";
 import { stripeWebhook } from "./paymentsWebhook";
-import { createProCheckout } from "./payApi";
+import { createProCheckout, checkoutOptions } from "./payApi";
 
 const http = httpRouter();
 
@@ -31,6 +31,11 @@ http.route({
 });
 
 // Create checkout session
+http.route({
+  path: "/api/pay/checkout",
+  method: "OPTIONS",
+  handler: checkoutOptions,
+});
 http.route({
   path: "/api/pay/checkout",
   method: "POST",

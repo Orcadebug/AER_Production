@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets/docs not for repo
+MCP-SETUP-GUIDE.md
+QUICK-START.md
+mcp-config.json

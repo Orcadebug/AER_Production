@@ -28,7 +28,7 @@ export default defineConfig({
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://brilliant-caribou-800.convex.site https://brilliant-caribou-800.convex.cloud",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: https: blob:",
-        "font-src 'self' data:",
+        "font-src 'self' data: https://r2cdn.perplexity.ai",
         "connect-src 'self' https://brilliant-caribou-800.convex.site https://brilliant-caribou-800.convex.cloud wss://brilliant-caribou-800.convex.cloud",
         "frame-ancestors 'none'",
         "base-uri 'self'",
