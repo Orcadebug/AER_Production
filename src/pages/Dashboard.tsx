@@ -109,15 +109,20 @@ export default function Dashboard() {
               return { context, score: 0 };
             }
 
-            // Calculate relevance score based on tag matches
+            // Calculate relevance score based on tag matches (earlier tags are more relevant)
             let score = 0;
+            const q = searchQuery.toLowerCase();
             context.tags.forEach((tag: string) => {
-              const tagIndex = relevantTags.indexOf(tag);
-              if (tagIndex !== -1) {
-                // Weight later tags higher in case AI returns least→most relevance
-                score += (tagIndex + 1) * 10;
+              const idx = relevantTags.indexOf(tag.toLowerCase());
+              if (idx !== -1) {
+                const weight = (relevantTags.length - idx); // higher weight for more relevant tags
+                score += weight * 10;
               }
             });
+            // Small boost if the title includes the query
+            if (typeof context.title === "string" && context.title.toLowerCase().includes(q)) {
+              score += 5;
+            }
 
             return { context, score };
           })
@@ -125,7 +130,7 @@ export default function Dashboard() {
           .sort((a: any, b: any) => b.score - a.score)
           .map((item: any) => item.context);
 
-        setAiSearchResults(rankedContexts);
+        setAiSearchResults(rankedContexts.length > 0 ? rankedContexts : searchResults);
       } catch (error) {
         console.error("AI search error:", error);
         setAiSearchResults(searchResults);
