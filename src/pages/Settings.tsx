@@ -13,16 +13,21 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageSquare, Bug, Lightbulb, HelpCircle } from "lucide-react";
+import { APP_CONFIG } from "@/lib/config";
 
 export default function Settings() {
   const { isLoading, isAuthenticated, user, signOut } = useAuth();
   const navigate = useNavigate();
   const [tokenCopied, setTokenCopied] = useState(false);
+  const [redeemInput, setRedeemInput] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
   
   const userStats = useQuery(api.admin.getUserStats);
   const myUsage = useQuery(api.entitlements.getMyUsage);
   const deleteAllData = useMutation(api.admin.deleteAllUserData);
   const updateFeedbackStatus = useMutation(api.feedback.updateStatus);
+  // Cast to any to avoid type issues until Convex regenerates API types
+  const redeemCode = useMutation((api as any).redeem.redeemCode);
   
   // Try to fetch all feedback if user is admin
   const allFeedback = useQuery(api.feedback.listAll);
@@ -209,16 +214,77 @@ export default function Settings() {
                       onClick={async () => {
                         // Create a checkout session for Pro
                         try {
-                          const res = await fetch("/api/pay/checkout", { method: "POST" });
+                          const convexUrl = (import.meta.env.VITE_CONVEX_URL as string) || "https://brilliant-caribou-800.convex.cloud";
+                          const endpoint = `${convexUrl}/api/pay/checkout`;
+                          console.log("Checkout POST ->", endpoint);
+                          const res = await fetch(endpoint, {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                            },
+                          });
                           const data = await res.json();
-                          if (data.url) window.location.href = data.url;
+                          if (data.url) {
+                            window.location.href = data.url;
+                          } else {
+                            console.error("Checkout response:", data);
+                            toast.error("No checkout URL received");
+                          }
                         } catch (e) {
+                          console.error("Checkout error:", e);
                           toast.error("Failed to start checkout");
                         }
                       }}
                     >
                       Upgrade to Pro ($9/mo)
                     </Button>
+                  </div>
+
+                  {/* Redeem access code */}
+                  <div className="pt-2 border-t">
+                    <label className="text-sm font-medium mb-2 block">Redeem Access Code</label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter code (e.g., beta24, Madhuri3081)"
+                        value={redeemInput}
+                        onChange={(e) => setRedeemInput(e.target.value)}
+                        className="font-mono text-sm"
+                      />
+                      <Button
+                        onClick={async () => {
+                          const code = redeemInput.trim();
+                          if (!code) {
+                            toast.error("Enter a code");
+                            return;
+                          }
+                          try {
+                            setRedeeming(true);
+                            const res = await redeemCode({ code });
+                            if (res?.success) {
+                              toast.success(`Code applied: ${res.tier}`);
+                              setRedeemInput("");
+                            } else {
+                              toast.error(res?.message || "Invalid code");
+                            }
+                          } catch (e) {
+                            toast.error("Failed to redeem code");
+                          } finally {
+                            setRedeeming(false);
+                          }
+                        }}
+                        disabled={redeeming}
+                        className="shrink-0"
+                      >
+                        {redeeming ? (
+                          <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Redeeming</span>
+                        ) : (
+                          "Redeem"
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      beta24 gives Beta tier. Madhuri3081 grants Owner tier.
+                    </p>
                   </div>
                 </CardContent>
               </Card>

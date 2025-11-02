@@ -40,11 +40,17 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setIsLoading(true);
     setError(null);
 
+    let lastEmail = "";
+    let lastPassword = "";
+
     try {
       const formData = new FormData(event.currentTarget);
       const email = formData.get("email") as string;
       const password = formData.get("password") as string;
       const confirmPassword = formData.get("confirmPassword") as string;
+
+      lastEmail = email;
+      lastPassword = password;
 
       // Validate passwords match for sign up
       if (isSignUp && password !== confirmPassword) {
@@ -70,6 +76,20 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     } catch (error) {
       console.error("Authentication error:", error);
       const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Auto-fix for dangling accounts: if sign-in fails with InvalidAccountId, try sign-up
+      if (!isSignUp && /InvalidAccountId|Invalid credentials/i.test(errorMessage) && lastEmail && lastPassword) {
+        try {
+          const fd = new FormData();
+          fd.set("email", lastEmail);
+          fd.set("password", lastPassword);
+          fd.set("flow", "signUp");
+          await signIn("password", fd);
+          return; // success, effect will redirect
+        } catch (e) {
+          // fall through to normal error handling
+        }
+      }
 
       // Check if the error indicates the user doesn't exist
       if (!isSignUp && errorMessage.includes("InvalidSecret")) {

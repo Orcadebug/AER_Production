@@ -31,30 +31,6 @@ type AsyncError = {
 
 type GenericError = SyncError | AsyncError;
 
-async function reportErrorToVly(errorData: {
-  error: string;
-  stackTrace?: string;
-  filename?: string;
-  lineno?: number;
-  colno?: number;
-}) {
-  if (!import.meta.env.VITE_VLY_APP_ID) {
-    return;
-  }
-
-  try {
-    await fetch(import.meta.env.VITE_VLY_MONITORING_URL, {
-      method: "POST",
-      body: JSON.stringify({
-        ...errorData,
-        url: window.location.href,
-        projectSemanticIdentifier: import.meta.env.VITE_VLY_APP_ID,
-      }),
-    });
-  } catch (error) {
-    console.error("Failed to report error to Vly:", error);
-  }
-}
 
 function ErrorDialog({
   error,
@@ -92,14 +68,12 @@ function ErrorDialog({
           </Collapsible>
         </div>
         <DialogFooter>
-          <a
-            href={`${APP_CONFIG.supportUrl}/project/${import.meta.env.VITE_VLY_APP_ID}`}
-            target="_blank"
+          <Button
+            variant="outline"
+            onClick={() => setError(null)}
           >
-            <Button>
-              <ExternalLink /> Open editor
-            </Button>
-          </a>
+            Close
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -139,10 +113,7 @@ class ErrorBoundary extends React.Component<
     //   // Warning: `captureOwnerStack` is not available in production.
     //   React.captureOwnerStack(),
     // );
-    reportErrorToVly({
-      error: error.message,
-      stackTrace: error.stack,
-    });
+    // Error caught, will be displayed in error boundary
     this.setState({
       hasError: true,
       error: {
@@ -154,14 +125,18 @@ class ErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      // You can render any custom fallback UI
+      // Show captured error details and allow closing to recover
       return (
         <ErrorDialog
-          error={{
-            error: "An error occurred",
-            stack: "",
+          error={
+            this.state.error ?? {
+              error: "An error occurred",
+              stack: "",
+            }
+          }
+          setError={() => {
+            this.setState({ hasError: false, error: null });
           }}
-          setError={() => {}}
         />
       );
     }
@@ -180,16 +155,18 @@ export function InstrumentationProvider({
   useEffect(() => {
     const handleError = async (event: ErrorEvent) => {
       try {
-        console.log(event);
         const msg = event.message || "";
         const file = event.filename || "";
         const isThirdPartyNoise =
           msg.includes("SES_UNCAUGHT_EXCEPTION") ||
-          file.includes("lockdown-install.js");
+          file.includes("lockdown-install.js") ||
+          msg.includes("InvalidAccountId");
         if (isThirdPartyNoise) {
-          // Likely from a browser extension (e.g., MetaMask SES); ignore
+          // Likely from a browser extension (e.g., MetaMask SES); ignore entirely (no console noise)
           return;
         }
+
+        console.log(event);
         event.preventDefault();
         setError({
           error: msg,
@@ -199,15 +176,6 @@ export function InstrumentationProvider({
           colno: event.colno,
         });
 
-        if (import.meta.env.VITE_VLY_APP_ID) {
-          await reportErrorToVly({
-            error: event.message,
-            stackTrace: event.error?.stack,
-            filename: event.filename,
-            lineno: event.lineno,
-            colno: event.colno,
-          });
-        }
       } catch (error) {
         console.error("Error in handleError:", error);
       }
@@ -217,12 +185,6 @@ export function InstrumentationProvider({
       try {
         console.error(event);
 
-        if (import.meta.env.VITE_VLY_APP_ID) {
-          await reportErrorToVly({
-            error: event.reason.message,
-            stackTrace: event.reason.stack,
-          });
-        }
 
         setError({
           error: event.reason.message,
