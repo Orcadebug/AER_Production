@@ -223,8 +223,22 @@ export default function Settings() {
                               "Content-Type": "application/json",
                             },
                           });
-                          const data = await res.json();
-                          if (data.url) {
+                          if (!res.ok) {
+                            const body = await res.text().catch(() => "");
+                            console.error("Checkout HTTP error:", res.status, body);
+                            toast.error(`Checkout failed (${res.status})`);
+                            return;
+                          }
+                          let data: any = null;
+                          try {
+                            data = await res.json();
+                          } catch {
+                            const body = await res.text().catch(() => "");
+                            console.error("Checkout non-JSON response:", body);
+                            toast.error("Checkout failed (invalid response)");
+                            return;
+                          }
+                          if (data?.url) {
                             window.location.href = data.url;
                           } else {
                             console.error("Checkout response:", data);
@@ -242,10 +256,10 @@ export default function Settings() {
 
                   {/* Redeem access code */}
                   <div className="pt-2 border-t">
-                    <label className="text-sm font-medium mb-2 block">Redeem Access Code</label>
+                    <label className="text-sm font-medium mb-2 block">Redeem Code</label>
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Enter code (e.g., beta24, Madhuri3081)"
+                        placeholder="Enter code"
                         value={redeemInput}
                         onChange={(e) => setRedeemInput(e.target.value)}
                         className="font-mono text-sm"
@@ -282,9 +296,6 @@ export default function Settings() {
                         )}
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      beta24 gives Beta tier. Madhuri3081 grants Owner tier.
-                    </p>
                   </div>
                 </CardContent>
               </Card>
