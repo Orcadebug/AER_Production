@@ -33,7 +33,25 @@ export const checkoutOptions = httpAction(async (_ctx, req) => {
 export const createProCheckout = httpAction(async (ctx, req) => {
   try {
     const origin = req.headers.get("Origin");
-    const url = await ctx.runAction(api.payments.createCheckoutSession, {
+    // Authenticate using token format: Bearer aer_{userId}
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...buildCorsHeaders(origin) },
+      });
+    }
+    const token = authHeader.substring(7);
+    if (!token.startsWith("aer_")) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...buildCorsHeaders(origin) },
+      });
+    }
+    const userId = token.substring(4) as any;
+
+    const url = await ctx.runAction(api.payments.createCheckoutSession as any, {
+      userId,
       priceId: process.env.STRIPE_PRICE_PRO as string,
       successUrl: `${process.env.SITE_URL || ''}/settings?upgrade=success`,
       cancelUrl: `${process.env.SITE_URL || ''}/settings?upgrade=cancel`,

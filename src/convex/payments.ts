@@ -7,31 +7,33 @@ import { internal } from "./_generated/api";
 
 // Internal helpers live in paymentsInternal.ts
 
-export const createCheckoutSession = action({
+export const createCheckoutSession: any = action({
   args: {
+    userId: v.id("users"),
     priceId: v.string(), // STRIPE_PRICE_PRO
     successUrl: v.string(),
     cancelUrl: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ url: string | null }> => {
     if (!process.env.STRIPE_SECRET_KEY) {
       throw new Error("Stripe not configured");
     }
 
-    const user = await ctx.runQuery(require("./users").getCurrentUserInternal, {} as any);
+    // Lookup the user explicitly using provided userId
+    const user: any = await ctx.runQuery(internal.users.getUserById, { userId: args.userId });
     if (!user) throw new Error("Unauthorized");
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
     // Ensure a customer exists
     let customerId = (user as any).stripeCustomerId as string | undefined;
     if (!customerId) {
-      const customer = await stripe.customers.create({ email: (user as any).email || undefined });
+      const customer: any = await stripe.customers.create({ email: (user as any).email || undefined });
       customerId = customer.id;
-await ctx.runMutation(internal.paymentsInternal.setStripeCustomerId, { userId: user._id, customerId });
+      await ctx.runMutation(internal.paymentsInternal.setStripeCustomerId, { userId: user._id, customerId: customerId as string });
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const session: any = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
       line_items: [{ price: args.priceId, quantity: 1 }],
@@ -39,7 +41,7 @@ await ctx.runMutation(internal.paymentsInternal.setStripeCustomerId, { userId: u
       cancel_url: args.cancelUrl,
     });
 
-    return { url: session.url };
+    return { url: session.url ?? null };
   },
 });
 

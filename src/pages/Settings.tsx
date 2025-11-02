@@ -218,10 +218,11 @@ export default function Settings() {
                           const site = (import.meta.env.VITE_CONVEX_SITE_URL as string) || cloud.replace("convex.cloud", "convex.site");
                           const endpoint = `${site}/api/pay/checkout`;
                           console.log("Checkout POST ->", endpoint);
-                          const res = await fetch(endpoint, {
+const res = await fetch(endpoint, {
                             method: "POST",
                             headers: {
                               "Content-Type": "application/json",
+                              Authorization: `Bearer ${authToken}`,
                             },
                           });
                           if (!res.ok) {
