@@ -7,6 +7,19 @@ import { Id } from "../_generated/dataModel";
  * Exposes MCP tools via HTTP for AI assistants
  */
 
+export const mcpHealth = httpAction(async (_ctx, request) => {
+  if (request.method !== "GET") {
+    return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  return new Response(
+    JSON.stringify({ status: "ok", message: "Aer MCP is ready", methods: ["POST /api/mcp"] }),
+    { status: 200, headers: { "Content-Type": "application/json" } }
+  );
+});
+
 export const mcpEndpoint = httpAction(async (ctx, request) => {
   try {
     // Verify authentication

@@ -46,6 +46,11 @@ http.route({
 // MCP endpoint for AI assistants
 http.route({
   path: "/api/mcp",
+  method: "GET",
+  handler: require("./mcp/index").mcpHealth,
+});
+http.route({
+  path: "/api/mcp",
   method: "POST",
   handler: mcpEndpoint,
 });
