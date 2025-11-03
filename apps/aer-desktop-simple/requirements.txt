@@ -1,0 +1,6 @@
+PyQt6==6.7.1
+PyQt6-Qt6==6.7.2
+PyQt6-sip==13.7.0
+Pillow==11.0.0
+pytesseract==0.3.12
+requests==2.32.3
