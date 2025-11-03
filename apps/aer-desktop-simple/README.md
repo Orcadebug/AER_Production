@@ -16,14 +16,14 @@ A simple, user-friendly desktop app for capturing screenshots, extracting text v
 ## Quick Install (Linux)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/aer/aer/main/apps/aer-desktop-simple/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Orcadebug/AER_Production/main/apps/aer-desktop-simple/install.sh | bash
 ```
 
 Or manually:
 
 ```bash
-git clone https://github.com/aer/aer.git
-cd aer/apps/aer-desktop-simple
+git clone https://github.com/Orcadebug/AER_Production.git
+cd AER_Production/apps/aer-desktop-simple
 chmod +x install.sh
 ./install.sh
 ```

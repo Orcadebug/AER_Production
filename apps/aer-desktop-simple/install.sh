@@ -26,14 +26,27 @@ fi
 
 echo -e "${BLUE}Detected: $PRETTY_NAME${NC}"
 
+# Handle EOL Ubuntu releases (e.g., oracular) by switching to old-releases
+if [[ "$DISTRO" == "ubuntu" || "$DISTRO" == "debian" ]]; then
+    if [[ "$VERSION_CODENAME" == "oracular" || "$VERSION_CODENAME" == "mantic" ]] || \
+       grep -Rq 'ubuntu-ports.*oracular' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null; then
+        echo -e "${YELLOW}Detected EOL Ubuntu sources; switching to old-releases.ubuntu.com...${NC}"
+        sudo sed -i.bak -E 's|http://ports.ubuntu.com/ubuntu-ports|http://old-releases.ubuntu.com/ubuntu|g; s|http://(archive|security).ubuntu.com/ubuntu|http://old-releases.ubuntu.com/ubuntu|g' /etc/apt/sources.list || true
+        for f in /etc/apt/sources.list.d/*.list; do 
+            [ -f "$f" ] && sudo sed -i.bak -E 's|http://ports.ubuntu.com/ubuntu-ports|http://old-releases.ubuntu.com/ubuntu|g; s|http://(archive|security).ubuntu.com/ubuntu|http://old-releases.ubuntu.com/ubuntu|g' "$f" || true
+        done
+        sudo apt-get update || true
+    fi
+fi
+
 # Install Tesseract if not present
 if ! command -v tesseract &> /dev/null; then
     echo -e "${YELLOW}Installing Tesseract OCR...${NC}"
     
     case "$DISTRO" in
         ubuntu|debian)
-            sudo apt update
-            sudo apt install -y tesseract-ocr
+            sudo apt-get update
+            sudo apt-get install -y tesseract-ocr
             ;;
         fedora|rhel|centos)
             sudo dnf install -y tesseract
@@ -54,7 +67,7 @@ fi
 echo -e "${YELLOW}Installing Qt6 libraries...${NC}"
 case "$DISTRO" in
     ubuntu|debian)
-        sudo apt install -y libqt6gui6 libqt6core6
+        sudo apt-get install -y libqt6gui6 libqt6core6
         ;;
     fedora|rhel|centos)
         sudo dnf install -y qt6-qtbase
