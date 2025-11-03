@@ -27,3 +27,7 @@ dist-ssr
 MCP-SETUP-GUIDE.md
 QUICK-START.md
 mcp-config.json
+
+# Desktop app build artifacts
+apps/aer-capture-desktop/release/
+apps/aer-capture-desktop/dist/
