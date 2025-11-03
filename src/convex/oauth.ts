@@ -63,27 +63,18 @@ export const oauthAuthorize = httpAction(async (ctx, req) => {
     }
   }
 
-  // Render a simple consent page asking for Aer token (from Settings)
+  // Redirect user to frontend consent screen for login & approval
   if (req.method === "GET") {
-    const body = `
-      <h1>Connect Aer to Claude</h1>
-      <p>To authorize Claude, paste your Aer token (from Settings) and click Authorize.</p>
-      <div class="box">
-        <form method="POST">
-          <input type="hidden" name="client_id" value="${client_id}" />
-          <input type="hidden" name="redirect_uri" value="${encodeURIComponent(redirect_uri)}" />
-          <input type="hidden" name="state" value="${state}" />
-          <input type="hidden" name="scope" value="${scope}" />
-          ${code_challenge ? `<input type="hidden" name="code_challenge" value="${code_challenge}" />` : ""}
-          ${code_challenge_method ? `<input type="hidden" name="code_challenge_method" value="${code_challenge_method}" />` : ""}
-          <label for="token">Aer Token</label>
-          <input id="token" name="token" placeholder="aer_..." style="width:100%" required />
-          <div style="margin-top:1rem">
-            <button type="submit">Authorize</button>
-          </div>
-        </form>
-      </div>`;
-    return html(body);
+    const site = process.env.SITE_URL || "https://www.aercarbon.com";
+    const consentUrl = urlCombine(`${site}/oauth/consent`, {
+      client_id,
+      redirect_uri,
+      state,
+      scope,
+      code_challenge,
+      code_challenge_method,
+    });
+    return new Response(null, { status: 302, headers: { Location: consentUrl } });
   }
 
   if (req.method === "POST") {
