@@ -18,22 +18,26 @@ export const mcpEndpoint = httpAction(async (ctx, request) => {
       );
     }
 
-    // Extract and validate token (format: aer_{userId})
-    const token = authHeader.substring(7); // Remove "Bearer "
-    if (!token.startsWith("aer_")) {
-      return new Response(
-        JSON.stringify({ error: "Invalid token format" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
+    // Accept either Aer token (aer_{userId}) or OAuth access token
+    const bearer = authHeader.substring(7);
+
+    let userId: Id<"users"> | null = null;
+
+    if (bearer.startsWith("aer_")) {
+      userId = bearer.substring(4) as Id<"users">;
+      const user = await ctx.runQuery(internal.users.getUserById, { userId });
+      if (!user) userId = null;
+    } else {
+      // Look up OAuth access token
+      const tokenRow = await ctx.runQuery(internal.oauthInternal.getAccessToken, { accessToken: bearer });
+      if (tokenRow && tokenRow.expiresAt > Date.now()) {
+        userId = tokenRow.userId as Id<"users">;
+      }
     }
 
-    const userId = token.substring(4) as Id<"users">; // Remove "aer_" prefix
-    
-    // Verify user exists
-    const user = await ctx.runQuery(internal.users.getUserById, { userId });
-    if (!user) {
+    if (!userId) {
       return new Response(
-        JSON.stringify({ error: "Invalid authentication token" }),
+        JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }

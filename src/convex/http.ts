@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 import { auth } from "./auth";
 import { uploadContext, batchUploadContexts } from "./httpApi";
 import { mcpEndpoint } from "./mcp/index";
+import { oauthAuthorize, oauthToken } from "./oauth";
 import { stripeWebhook } from "./paymentsWebhook";
 import { createProCheckout, checkoutOptions } from "./payApi";
 
@@ -47,6 +48,23 @@ http.route({
   path: "/api/mcp",
   method: "POST",
   handler: mcpEndpoint,
+});
+
+// OAuth 2.0 endpoints for Claude connectors
+http.route({
+  path: "/api/oauth/authorize",
+  method: "GET",
+  handler: oauthAuthorize,
+});
+http.route({
+  path: "/api/oauth/authorize",
+  method: "POST",
+  handler: oauthAuthorize,
+});
+http.route({
+  path: "/api/oauth/token",
+  method: "POST",
+  handler: oauthToken,
 });
 
 // Export the router as default

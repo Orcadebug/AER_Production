@@ -186,6 +186,37 @@ const schema = defineSchema(
       .index("by_timestamp", ["timestamp"])
       .index("by_severity", ["severity"])
       .index("by_resolved", ["resolved"]),
+
+    // OAuth 2.0 client registry (for Claude connector, etc.)
+    oauth_clients: defineTable({
+      clientId: v.string(),
+      name: v.string(),
+      redirectUris: v.array(v.string()),
+      createdAt: v.number(),
+    }).index("by_client", ["clientId"]),
+
+    // OAuth authorization codes (short-lived)
+    oauth_auth_codes: defineTable({
+      code: v.string(),
+      clientId: v.string(),
+      userId: v.id("users"),
+      redirectUri: v.string(),
+      scope: v.optional(v.string()),
+      codeChallenge: v.optional(v.string()),
+      codeChallengeMethod: v.optional(v.string()), // S256 or plain
+      expiresAt: v.number(),
+      createdAt: v.number(),
+    }).index("by_code", ["code"]),
+
+    // OAuth access tokens (bearer)
+    oauth_tokens: defineTable({
+      accessToken: v.string(),
+      userId: v.id("users"),
+      clientId: v.string(),
+      scope: v.optional(v.string()),
+      expiresAt: v.number(),
+      createdAt: v.number(),
+    }).index("by_token", ["accessToken"]),
   },
   {
     schemaValidation: false,
