@@ -35,10 +35,13 @@ export default async function handler(req) {
         protocol: 'mcp',
         transport: 'sse',
         auth,
+        http: {
+          invoke_url: `${site}/api/mcp/invoke`,
+        },
         tools: [
-          { name: 'list_contexts', description: 'List your contexts' },
-          { name: 'search_contexts', description: 'Search contexts by query' },
-          { name: 'list_tags', description: 'List your tags' },
+          { name: 'list_contexts', description: 'List your contexts', schema: { type: 'object', properties: { limit: { type: 'number' } } } },
+          { name: 'search_contexts', description: 'Search contexts by query', schema: { type: 'object', properties: { query: { type: 'string' } } } },
+          { name: 'list_tags', description: 'List your tags', schema: { type: 'object', properties: {} } },
         ],
       };
 
