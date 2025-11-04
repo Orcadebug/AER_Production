@@ -243,6 +243,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         
         // Prepare data with correct format
         dataToUpload = prepareDataForUpload(dataToUpload);
+
+        // If we only have a URL/title stub, enrich with page content via content script
+        try {
+          const looksStub = typeof dataToUpload.content === 'string' && dataToUpload.content.startsWith('Page: ');
+          if ((!dataToUpload.content || looksStub) && sender?.tab?.id) {
+            const page = await chrome.tabs.sendMessage(sender.tab.id, { action: 'extractContent' });
+            if (page && page.content) {
+              dataToUpload.content = `Title: ${page.title}\nURL: ${page.url}\n\n${page.content}`;
+            }
+          }
+        } catch (e) {
+          console.warn('[Upload] Could not extract page content:', e);
+        }
         
         // Add metadata from sender if available
         if (sender.tab) {
@@ -340,7 +353,17 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     } else if (info.srcUrl) {
       dataToUpload.content = `Image: ${info.srcUrl}`;
     } else {
-      dataToUpload.content = `Page: ${tab.title}\nURL: ${tab.url}`;
+      // Enrich with extracted page content
+      try {
+        const page = await chrome.tabs.sendMessage(tab.id, { action: 'extractContent' });
+        if (page && page.content) {
+          dataToUpload.content = `Title: ${page.title}\nURL: ${page.url}\n\n${page.content}`;
+        } else {
+          dataToUpload.content = `Page: ${tab.title}\nURL: ${tab.url}`;
+        }
+      } catch {
+        dataToUpload.content = `Page: ${tab.title}\nURL: ${tab.url}`;
+      }
     }
     
     dataToUpload.metadata = {

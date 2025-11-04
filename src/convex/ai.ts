@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { internalAction, action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import Perplexity from "@perplexity-ai/perplexity_ai";
+import { serverEncryptString } from "./crypto";
 
 // Lazy initialization to avoid requiring API key at module load time
 function getPerplexity() {
@@ -154,30 +155,28 @@ export const generateAndUpdateTags = internalAction({
 /**
  * Generate summary and update the context (stores as a "plain" envelope)
  */
-export const generateAndUpdateSummary = internalAction({
+export const generateAndUpdateEncryptedSummary = internalAction({
   args: {
     userId: v.id("users"),
     contextId: v.id("contexts"),
     content: v.string(),
-    title: v.string(),
   },
   handler: async (ctx, args) => {
     try {
-      // Enforce usage limits
       const allowed = await ctx.runQuery(internal.entitlements.assertPerplexityAllowed, { userId: args.userId });
-      if (!allowed.ok) {
-        throw new Error(`Perplexity usage exceeded ${allowed.used}/${allowed.allowed}`);
-      }
-
+      if (!allowed.ok) return;
       const summary = await ctx.runAction(internal.ai.generateSummary, {
         content: args.content,
-        title: args.title,
+        title: "",
       });
-
-      // Do not persist summaries server-side in E2E mode
+      const enc = serverEncryptString(summary || args.content.substring(0, 200));
+      await ctx.runMutation(internal.contextsInternal.updateEncryptedSummary, {
+        contextId: args.contextId,
+        encryptedSummary: enc,
+      });
       await ctx.runMutation(internal.entitlements.incrementPerplexity, { userId: args.userId, amount: 1 });
     } catch (error) {
-      console.error("Failed to generate and update summary:", error);
+      console.error("Failed to generate encrypted summary:", error);
     }
   },
 });

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { serverEncryptString } from "./crypto";
 
 /**
  * Internal mutation to create a context for a specific user (bypasses auth)
@@ -61,6 +62,11 @@ export const createForUser = internalMutation({
         content: args.plaintextContent,
         title: "",
         totalContexts,
+      });
+      await ctx.scheduler.runAfter(0, internal.ai.generateAndUpdateEncryptedSummary, {
+        userId: args.userId,
+        contextId,
+        content: args.plaintextContent,
       });
     }
 
