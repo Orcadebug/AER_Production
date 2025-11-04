@@ -37,6 +37,18 @@ class SettingsDialog(QDialog):
         self.auto_ocr_check = QCheckBox("Auto-extract text from screenshots (OCR)")
         self.auto_ocr_check.setChecked(self.config.get('auto_ocr', True))
         layout.addWidget(self.auto_ocr_check)
+
+        # Encryption key
+        layout.addWidget(QLabel("Encryption Key (base64 32 bytes):"))
+        from crypto import generate_key
+        self.key_input = QLineEdit()
+        self.key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.key_input.setText(self.config.get('encryption_key', ''))
+        self.key_input.setPlaceholderText("Click Generate if empty")
+        layout.addWidget(self.key_input)
+        gen_btn = QPushButton("Generate New Key")
+        gen_btn.clicked.connect(lambda: self.key_input.setText(generate_key()))
+        layout.addWidget(gen_btn)
         
         layout.addStretch()
         
@@ -69,6 +81,7 @@ class SettingsDialog(QDialog):
     def save_settings(self):
         token = self.token_input.text().strip()
         url = self.url_input.text().strip()
+        enc_key = self.key_input.text().strip()
         
         if not token:
             QMessageBox.warning(self, "Validation Error", "API token cannot be empty")
@@ -78,9 +91,14 @@ class SettingsDialog(QDialog):
             QMessageBox.warning(self, "Validation Error", "API URL cannot be empty")
             return
         
+        if not enc_key:
+            QMessageBox.warning(self, "Validation Error", "Encryption key is required (click Generate if empty)")
+            return
+        
         self.config.set('api_token', token)
         self.config.set('api_url', url)
         self.config.set('auto_ocr', self.auto_ocr_check.isChecked())
+        self.config.set('encryption_key', enc_key)
         
         QMessageBox.information(self, "Success", "Settings saved!")
         self.accept()

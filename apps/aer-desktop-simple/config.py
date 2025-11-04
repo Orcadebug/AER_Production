@@ -24,6 +24,7 @@ class Config:
             'api_url': 'https://aercarbon.com',
             'auto_ocr': True,
             'auto_send': False,
+            'encryption_key': '',  # base64 32-byte key for client-side encryption
         }
     
     def save(self):

@@ -42,16 +42,17 @@ class UploadWorker(QThread):
     finished = pyqtSignal(str)  # response message
     error = pyqtSignal(str)
     
-    def __init__(self, image: Image.Image, text: str, token: str, api_url: str):
+    def __init__(self, image: Image.Image, text: str, token: str, api_url: str, enc_key_b64: str):
         super().__init__()
         self.image = image
         self.text = text
         self.token = token
         self.api_url = api_url
+        self.enc_key_b64 = enc_key_b64
     
     def run(self):
         try:
-            result = upload_context(self.image, self.text, self.token, self.api_url)
+            result = upload_context(self.image, self.text, self.token, self.api_url, self.enc_key_b64)
             self.finished.emit(result)
         except Exception as e:
             self.error.emit(str(e))
@@ -237,12 +238,19 @@ class MainWindow(QMainWindow):
         
         token = self.config.get('api_token')
         api_url = self.config.get('api_url')
+        enc_key = self.config.get('encryption_key')
+        if not enc_key:
+            QMessageBox.warning(self, "Missing Encryption Key", "Please set an encryption key in Settings.")
+            self.open_settings()
+            self.send_btn.setEnabled(True)
+            return
         
         self.upload_worker = UploadWorker(
             self.current_image,
             self.current_text or "",
             token,
-            api_url
+            api_url,
+            enc_key
         )
         self.upload_worker.finished.connect(self.on_upload_success)
         self.upload_worker.error.connect(self.on_upload_error)

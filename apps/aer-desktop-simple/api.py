@@ -1,35 +1,51 @@
 import requests
 import io
+import json
+import base64
 from PIL import Image
 from typing import Tuple
+from crypto import encrypt_json
 
-def upload_context(image: Image.Image, text: str, token: str, api_url: str) -> str:
-    """Upload screenshot and extracted text to Aer API."""
+
+def upload_context(image: Image.Image, text: str, token: str, api_url: str, enc_key_b64: str) -> str:
+    """Encrypt screenshot payload client-side and upload to Aer API."""
     try:
-        # Prepare image for upload
+        # Prepare image as base64 PNG
         image_buffer = io.BytesIO()
         image.save(image_buffer, format='PNG')
-        image_buffer.seek(0)
-        
-        # Prepare files and data
-        files = {
-            'file': ('screenshot.png', image_buffer, 'image/png')
+        image_bytes = image_buffer.getvalue()
+        image_b64 = base64.b64encode(image_bytes).decode('utf-8')
+
+        # Build plaintext payload for encryption
+        payload = {
+            'kind': 'screenshot',
+            'ocrText': text or '',
+            'image': {
+                'mime': 'image/png',
+                'data': image_b64,
+            },
+            'createdAt': __import__('time').time(),
         }
-        
-        data = {
-            'title': 'Screenshot',
-            'content': text or '(Screenshot with no extracted text)',
+        plaintext = json.dumps(payload).encode('utf-8')
+
+        ciphertext_b64, nonce_b64 = encrypt_json(plaintext, enc_key_b64)
+
+        body = {
+            'encryptedContent': { 'ciphertext': ciphertext_b64, 'nonce': nonce_b64 },
+            'encryptedTitle': None,
+            'encryptedSummary': None,
+            'encryptedMetadata': None,
+            'tags': [],
         }
-        
+
         headers = {
-            'Authorization': f'Bearer {token}'
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json',
         }
-        
-        # Upload to Aer
+
         response = requests.post(
             f"{api_url}/api/context/upload",
-            files=files,
-            data=data,
+            data=json.dumps(body),
             headers=headers,
             timeout=30
         )

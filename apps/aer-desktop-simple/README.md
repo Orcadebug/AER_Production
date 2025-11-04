@@ -8,6 +8,7 @@ A simple, user-friendly desktop app for capturing screenshots, extracting text v
 
 - 📸 **One-click screenshot capture** with live preview
 - 🔤 **Automatic OCR** to extract text from screenshots
+- 🔐 **End-to-end encryption** (client-side with a user key)
 - 🚀 **One-click send** to upload to Aer
 - ⚙️ **Simple settings** for API token and preferences
 - 🎨 **Clean, minimal UI** similar to the Chrome extension
@@ -46,9 +47,10 @@ python3 main.py
 
 1. Click **⚙️ Settings** in the app
 2. Enter your Aer API token (format: `aer_xxxxx`)
-3. Optionally change the API URL (default: `https://aercarbon.com`)
-4. Toggle "Auto-extract text from screenshots" if needed
-5. Click **Save**
+3. Click "Generate New Key" to create your encryption key (save it if using multiple devices)
+4. Optionally change the API URL (default: `https://aercarbon.com`)
+5. Toggle "Auto-extract text from screenshots" if needed
+6. Click **Save**
 
 ## Usage
 
