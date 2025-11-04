@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useEncryption } from "@/hooks/use-encryption";
 import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { FileText, Loader2, LogOut, Plus, Search, Upload, X, FolderOpen, Tag as TagIcon, Lock, Copy, ExternalLink, Trash2, Edit } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -17,7 +17,6 @@ import { motion } from "framer-motion";
 import { Id } from "@/convex/_generated/dataModel";
 import { extractTextFromPDF, isPDF } from "@/lib/pdfExtractor";
 import { internal } from "@/convex/_generated/api";
-import { useAction } from "convex/react";
 
 export default function Dashboard() {
   const { isLoading, isAuthenticated, user, signOut } = useAuth();
@@ -38,6 +37,7 @@ export default function Dashboard() {
   const [editTitle, setEditTitle] = useState<string>("");
   const [editContent, setEditContent] = useState<string>("");
   const [editProject, setEditProject] = useState<string>("none");
+  const [serverPlainById, setServerPlainById] = useState<Record<string, string>>({});
 
   const contextsResult = useQuery(
     api.contexts.listPaginated,
@@ -55,6 +55,7 @@ export default function Dashboard() {
   const tags = useQuery(api.tags.list);
 
   const matchQueryToTags = useAction(api.ai.matchQueryToTags);
+  const decryptServer = useAction(api.contexts.decryptServer);
 
   const createContext = useMutation(api.contexts.create);
   const createProject = useMutation(api.projects.create);
@@ -335,10 +336,9 @@ export default function Dashboard() {
   const getDecryptedContent = (context: any) => {
     if (context.encryptedContent) {
       const decrypted = decrypt(context.encryptedContent);
-      if (!decrypted) {
-        return "[This content was encrypted with a previous session key and cannot be decrypted. Please delete this context and create it again with the new encryption system.]";
-      }
-      return decrypted;
+      if (decrypted) return decrypted;
+      const cached = serverPlainById[context._id];
+      return cached || "(Decrypting...)";
     }
     return "No content available";
   };
@@ -347,10 +347,10 @@ export default function Dashboard() {
   const getDecryptedTitle = (context: any) => {
     if (context.encryptedTitle) {
       const decrypted = decrypt(context.encryptedTitle);
-      if (!decrypted) {
-        return `${context.title} [Old Encryption - Delete Me]`;
-      }
-      return decrypted;
+      if (decrypted) return decrypted;
+      const fallback = serverPlainById[context._id];
+      if (fallback) return fallback.split(/\n/)[0].slice(0, 80) || "(Encrypted)";
+      return context.title || "(Encrypted)";
     }
     return context.title;
   };
@@ -359,10 +359,10 @@ export default function Dashboard() {
   const getDecryptedSummary = (context: any) => {
     if (context.encryptedSummary) {
       const decrypted = decrypt(context.encryptedSummary);
-      if (!decrypted) {
-        return "[Encrypted with old key - please delete and re-create this context]";
-      }
-      return decrypted;
+      if (decrypted) return decrypted;
+      const fallback = serverPlainById[context._id];
+      if (fallback) return (fallback.length > 150 ? fallback.slice(0, 150) + "..." : fallback) || "(Encrypted)";
+      return "(Decrypting...)";
     }
     // Fallback to showing type if no summary
     return `${context.type === "file" ? "File" : "Note"} - No preview available`;
@@ -602,7 +602,15 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
             >
-              <Card className="hover:border-[#8BA888] transition-colors cursor-pointer" onClick={() => setSelectedContext(context)}>
+              <Card className="hover:border-[#8BA888] transition-colors cursor-pointer" onClick={async () => {
+                setSelectedContext(context);
+                try {
+                  if (!decrypt(context.encryptedContent) && !serverPlainById[context._id]) {
+                    const plain = await decryptServer({ id: context._id });
+                    setServerPlainById((m) => ({ ...m, [context._id]: plain || "" }));
+                  }
+                } catch {}
+              }}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

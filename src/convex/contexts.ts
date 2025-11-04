@@ -1,7 +1,8 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
 import { getCurrentUser } from "./users";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
+import { serverDecryptString } from "./crypto";
 
 const encryptedDataValidator = v.object({
   ciphertext: v.string(),
@@ -257,6 +258,18 @@ export const listPaginated = query({
       isDone: result.isDone,
       continueCursor: result.continueCursor,
     };
+  },
+});
+
+export const decryptServer = action({
+  args: { id: v.id("contexts") },
+  handler: async (ctx, args) => {
+    const context = await ctx.runQuery(api.contexts.get, { id: args.id });
+    if (!context) throw new Error("Not found");
+    const enc = (context as any).encryptedContent as { ciphertext: string; nonce: string } | undefined;
+    if (!enc || !enc.ciphertext || !enc.nonce) return "";
+    const plain = serverDecryptString(enc.ciphertext, enc.nonce);
+    return plain || "";
   },
 });
 

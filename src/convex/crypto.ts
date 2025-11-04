@@ -40,3 +40,16 @@ export function serverEncryptString(plaintext: string): { ciphertext: string; no
   const boxed = nacl.secretbox(message, nonce, key);
   return { ciphertext: b64encode(boxed), nonce: b64encode(nonce) };
 }
+
+export function serverDecryptString(ciphertextB64: string, nonceB64: string): string | null {
+  try {
+    const key = getServerKey();
+    const ciphertext = b64decode(ciphertextB64);
+    const nonce = b64decode(nonceB64);
+    const opened = nacl.secretbox.open(ciphertext, nonce, key);
+    if (!opened) return null;
+    return new TextDecoder().decode(opened);
+  } catch (e) {
+    return null;
+  }
+}
