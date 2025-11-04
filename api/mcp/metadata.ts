@@ -1,6 +1,13 @@
 export const config = { runtime: 'edge' };
 
 export default async function handler() {
+  const enabled = process.env.MCP_ENABLED === 'true';
+  if (!enabled) {
+    return new Response(JSON.stringify({ error: 'Not Found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    });
+  }
   const convexBase = (process.env.VITE_CONVEX_SITE_URL || 'https://brilliant-caribou-800.convex.site');
   return new Response(
     JSON.stringify({
@@ -15,6 +22,6 @@ export default async function handler() {
         callback_urls: ['https://claude.ai/api/mcp/auth_callback', 'https://claude.com/api/mcp/auth_callback'],
       },
     }),
-    { status: 200, headers: { 'Content-Type': 'application/json' } }
+    { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
   );
 }
