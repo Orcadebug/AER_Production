@@ -46,6 +46,24 @@ export const createForUser = internalMutation({
       encryptedMetadata: args.encryptedMetadata,
     });
 
+    // Compute user's total contexts for tag granularity
+    const totalContexts = await ctx.db
+      .query("contexts")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect()
+      .then((cs) => cs.length);
+
+    // Schedule AI enrichment if plaintext available
+    if (args.plaintextContent && process.env.PERPLEXITY_API_KEY) {
+      await ctx.scheduler.runAfter(0, internal.ai.generateAndUpdateTags, {
+        userId: args.userId,
+        contextId,
+        content: args.plaintextContent,
+        title: "",
+        totalContexts,
+      });
+    }
+
     // Audit
     await ctx.scheduler.runAfter(0, internal.audit.logAuditEvent, {
       userId: args.userId,

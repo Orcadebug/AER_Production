@@ -1,6 +1,7 @@
 import { httpAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { serverEncryptString } from "./crypto";
 
 /**
  * HTTP API endpoint for uploading encrypted context
@@ -38,20 +39,22 @@ export const uploadContext = httpAction(async (ctx, request) => {
     }
 
     const body = await request.json();
-    const {
-      encryptedContent,
-      encryptedTitle,
-      encryptedMetadata,
-      encryptedSummary,
-      tags,
-    } = body;
 
-    // Enforce client-side end-to-end encryption: plaintext is not accepted
+    // Accept either encrypted or plaintext payloads
+    let { encryptedContent, encryptedTitle, encryptedMetadata, encryptedSummary, tags, content, plaintext } = body || {};
+
+    // If encrypted content not provided, encrypt plaintext on the server
     if (!encryptedContent || !encryptedContent.ciphertext || !encryptedContent.nonce) {
-      return new Response(JSON.stringify({ error: "Missing 'encryptedContent'" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+      const text = typeof plaintext === "string" && plaintext.length > 0
+        ? plaintext
+        : typeof content === "string" ? content : "";
+      if (!text || text.length === 0) {
+        return new Response(JSON.stringify({ error: "Missing content: provide 'content' or 'encryptedContent'" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      encryptedContent = serverEncryptString(text);
     }
 
     // Create context via internal mutation bound to userId
@@ -62,6 +65,7 @@ export const uploadContext = httpAction(async (ctx, request) => {
       encryptedSummary,
       encryptedMetadata,
       tags,
+      plaintextContent: plaintext || content,
     });
 
     // Log audit event
@@ -133,16 +137,24 @@ export const batchUploadContexts = httpAction(async (ctx, request) => {
     const results: Array<{ success: boolean; contextId?: string; error?: string }> = [];
     for (const context of contexts) {
       try {
-        const {
+        let {
           encryptedContent,
           encryptedTitle,
           encryptedMetadata,
           encryptedSummary,
           tags,
+          content,
+          plaintext,
         } = context;
 
         if (!encryptedContent || !encryptedContent.ciphertext || !encryptedContent.nonce) {
-          throw new Error("Missing 'encryptedContent'");
+          const text = typeof plaintext === "string" && plaintext.length > 0
+            ? plaintext
+            : typeof content === "string" ? content : "";
+          if (!text || text.length === 0) {
+            throw new Error("Missing content for item: provide 'content' or 'encryptedContent'");
+          }
+          encryptedContent = serverEncryptString(text);
         }
 
         const contextId = await ctx.runMutation(internal.contextsInternal.createForUser, {
@@ -152,6 +164,7 @@ export const batchUploadContexts = httpAction(async (ctx, request) => {
           encryptedSummary,
           encryptedMetadata,
           tags,
+          plaintextContent: plaintext || content,
         });
 
         results.push({ success: true, contextId });

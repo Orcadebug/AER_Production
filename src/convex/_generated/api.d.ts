@@ -20,6 +20,7 @@ import type * as auth_emailOtp from "../auth/emailOtp.js";
 import type * as auth from "../auth.js";
 import type * as contexts from "../contexts.js";
 import type * as contextsInternal from "../contextsInternal.js";
+import type * as crypto from "../crypto.js";
 import type * as entitlements from "../entitlements.js";
 import type * as feedback from "../feedback.js";
 import type * as http from "../http.js";
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   contexts: typeof contexts;
   contextsInternal: typeof contextsInternal;
+  crypto: typeof crypto;
   entitlements: typeof entitlements;
   feedback: typeof feedback;
   http: typeof http;
