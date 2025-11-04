@@ -77,12 +77,9 @@ const schema = defineSchema(
     contexts: defineTable({
       userId: v.id("users"),
       projectId: v.optional(v.id("projects")),
-      // Plaintext fields for indexing/search (minimal metadata)
-      title: v.string(),
-      type: v.union(v.literal("note"), v.literal("file"), v.literal("web")),
-      // AI-generated tags for semantic search (unencrypted)
+      // Only tags remain in plaintext for discovery
       tags: v.optional(v.array(v.string())),
-      // Encrypted fields (actual content)
+      // Encrypted fields (actual content and metadata)
       encryptedContent: v.object({
         ciphertext: v.string(),
         nonce: v.string(),
@@ -99,6 +96,9 @@ const schema = defineSchema(
         ciphertext: v.string(),
         nonce: v.string(),
       })),
+      // Optional legacy fields retained for backward compatibility (not populated going forward)
+      title: v.optional(v.string()),
+      type: v.optional(v.union(v.literal("note"), v.literal("file"), v.literal("web"))),
       // File storage (files themselves are not encrypted in Convex storage)
       fileId: v.optional(v.id("_storage")),
       fileName: v.optional(v.string()),
@@ -107,11 +107,7 @@ const schema = defineSchema(
       tagIds: v.optional(v.array(v.id("tags"))),
     })
       .index("by_user", ["userId"])
-      .index("by_project", ["projectId"])
-      .searchIndex("search_content", {
-        searchField: "title",
-        filterFields: ["userId"],
-      }),
+      .index("by_project", ["projectId"]),
 
     // Usage tracking (monthly window)
     usage: defineTable({

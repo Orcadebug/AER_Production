@@ -174,12 +174,7 @@ export const generateAndUpdateSummary = internalAction({
         title: args.title,
       });
 
-      // Update the context with generated summary as a plain envelope
-      await ctx.runMutation(internal.contextsInternal.updateSummary, {
-        contextId: args.contextId,
-        summary,
-      });
-      // Increment usage on success
+      // Do not persist summaries server-side in E2E mode
       await ctx.runMutation(internal.entitlements.incrementPerplexity, { userId: args.userId, amount: 1 });
     } catch (error) {
       console.error("Failed to generate and update summary:", error);
@@ -209,18 +204,17 @@ export const semanticSearchPublic = internalAction({
           index: idx,
           contextId: c._id,
           tags: c.tags,
-          title: c.title,
         }));
 
       if (contextsWithTags.length === 0) {
         return allContexts.map((c: any) => c._id);
       }
 
-      // Create a mapping of contexts with their tags
+      // Create a mapping of contexts with their tags (no plaintext titles)
       const contextsText = contextsWithTags
         .map(
           (c: any) =>
-            `${c.index}. Title: "${c.title}" | Tags: ${c.tags.join(", ")}`
+            `${c.index}. Tags: ${c.tags.join(", ")}`
         )
         .join("\n");
 
@@ -335,9 +329,7 @@ Rules:
         projectName = null;
       }
 
-      if (title && title.length > 0) {
-        await ctx.runMutation(internal.contextsInternal.updateTitle, { contextId: args.contextId, title });
-      }
+      // Title updates are client-side only in E2E mode; do not store plaintext titles
 
       // Match project by case-insensitive exact name or simple token overlap
       if (projectName && projectName.length > 0) {

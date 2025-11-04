@@ -10,69 +10,43 @@ const encryptedDataValidator = v.object({
 
 export const create = mutation({
   args: {
-    title: v.string(),
-    type: v.union(v.literal("note"), v.literal("file"), v.literal("web")),
+    // Legacy optional fields (ignored server-side)
+    title: v.optional(v.string()),
+    type: v.optional(v.union(v.literal("note"), v.literal("file"), v.literal("web"))),
+    plaintextContent: v.optional(v.string()),
+    // Current args
     projectId: v.optional(v.id("projects")),
     tagIds: v.optional(v.array(v.id("tags"))),
+    tags: v.optional(v.array(v.string())),
     fileId: v.optional(v.id("_storage")),
     fileName: v.optional(v.string()),
     fileType: v.optional(v.string()),
     url: v.optional(v.string()),
-    // Encrypted fields
-    // Make encryptedContent optional to allow plaintext-only uploads
-    encryptedContent: v.optional(encryptedDataValidator),
+    // Encrypted fields (required)
+    encryptedContent: encryptedDataValidator,
     encryptedTitle: v.optional(encryptedDataValidator),
     encryptedSummary: v.optional(encryptedDataValidator),
     encryptedMetadata: v.optional(encryptedDataValidator),
-    // Plaintext content for AI tag generation and summary (will be discarded)
-    plaintextContent: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) throw new Error("Unauthorized");
 
-    // Added: Server-side fallback generation when encrypted fields are missing
-    const encContent =
-      args.encryptedContent ??
-      (args.plaintextContent
-        ? { ciphertext: args.plaintextContent, nonce: "plain" }
-        : null);
-
-    if (!encContent) {
+    // Enforce encrypted input only
+    const encContent = args.encryptedContent;
+    if (!encContent?.ciphertext || !encContent?.nonce) {
       throw new Error("Missing encrypted content");
     }
 
-    const encTitle =
-      args.encryptedTitle ??
-      (args.title ? { ciphertext: args.title, nonce: "plain" } : undefined);
+    const encTitle = args.encryptedTitle;
+    const encSummary = args.encryptedSummary;
 
-    const generatedSummary =
-      args.plaintextContent
-        ? (args.plaintextContent.length > 200
-            ? args.plaintextContent.slice(0, 200).trim() + "..."
-            : args.plaintextContent.trim())
-        : undefined;
-
-    const encSummary =
-      args.encryptedSummary ??
-      (generatedSummary
-        ? { ciphertext: generatedSummary, nonce: "plain" }
-        : undefined);
-
-    // Get user's total context count for tag granularity
-    const totalContexts = await ctx.db
-      .query("contexts")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect()
-      .then((contexts) => contexts.length);
-
-    // Insert context first (use resolved encrypted fields above)
+    // Insert context (no plaintext fields)
     const contextId = await ctx.db.insert("contexts", {
       userId: user._id,
-      title: args.title,
-      type: args.type,
       projectId: args.projectId,
       tagIds: args.tagIds,
+      tags: args.tags,
       fileId: args.fileId,
       fileName: args.fileName,
       fileType: args.fileType,
@@ -95,42 +69,7 @@ export const create = mutation({
       });
     } catch {}
 
-    // Schedule AI enrichment in background (non-blocking)
-    if (args.plaintextContent && process.env.PERPLEXITY_API_KEY) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.ai.generateAndUpdateTags,
-        {
-          userId: user._id,
-          contextId,
-          content: args.plaintextContent,
-          title: args.title,
-          totalContexts,
-        }
-      );
-
-      await ctx.scheduler.runAfter(
-        0,
-        internal.ai.generateAndUpdateSummary,
-        {
-          userId: user._id,
-          contextId,
-          content: args.plaintextContent,
-          title: args.title,
-        }
-      );
-
-      await ctx.scheduler.runAfter(
-        0,
-        internal.ai.generateAndUpdateTitleAndProject,
-        {
-          userId: user._id,
-          contextId,
-          content: args.plaintextContent,
-          currentTitle: args.title,
-        }
-      );
-    }
+    // No server-side AI generation: client should supply tags only
 
     // Log audit event
     await ctx.scheduler.runAfter(0, internal.audit.logAuditEvent, {
@@ -186,31 +125,14 @@ export const search = query({
       .order("desc")
       .collect();
 
-    // If no search query, return all contexts
+    // If no search query, return contexts that have tags (client can rank)
     if (!args.query || args.query.trim().length === 0) {
-      return allContexts.slice(0, 20);
+      return allContexts.filter((c) => c.tags && c.tags.length > 0).slice(0, 20);
     }
 
-    // Collect all unique tags from contexts
-    const allTags = new Set<string>();
-    allContexts.forEach((context) => {
-      if (context.tags) {
-        context.tags.forEach((tag: string) => allTags.add(tag));
-      }
-    });
-
-    // If no tags exist, fall back to title search
-    if (allTags.size === 0) {
-      return await ctx.db
-        .query("contexts")
-        .withSearchIndex("search_content", (q) =>
-          q.search("title", args.query).eq("userId", user._id)
-        )
-        .take(20);
-    }
-
-    // Return contexts with their tags for client-side AI matching
-    return allContexts.filter((c) => c.tags && c.tags.length > 0);
+    // Filter by tag substring match on the server (privacy-safe)
+    const q = args.query.toLowerCase();
+    return allContexts.filter((c) => (c.tags || []).some((t: string) => t.toLowerCase().includes(q)));
   },
 });
 
@@ -223,17 +145,16 @@ export const get = query({
     const context = await ctx.db.get(args.id);
     if (!context || context.userId !== user._id) return null;
 
-    return context;
+    return context; // Encrypted fields only; client must decrypt
   },
 });
 
 export const update = mutation({
   args: {
     id: v.id("contexts"),
-    title: v.optional(v.string()),
-    content: v.optional(v.string()),
     projectId: v.optional(v.id("projects")),
     tagIds: v.optional(v.array(v.id("tags"))),
+    tags: v.optional(v.array(v.string())),
     encryptedContent: v.optional(encryptedDataValidator),
     encryptedTitle: v.optional(encryptedDataValidator),
     encryptedSummary: v.optional(encryptedDataValidator),
@@ -249,9 +170,9 @@ export const update = mutation({
     }
 
     await ctx.db.patch(args.id, {
-      title: args.title,
       projectId: args.projectId,
       tagIds: args.tagIds,
+      tags: args.tags,
       encryptedContent: args.encryptedContent,
       encryptedTitle: args.encryptedTitle,
       encryptedSummary: args.encryptedSummary,
@@ -363,11 +284,13 @@ export const exportAllContexts = query({
     let markdown = `# Aer Context Export\n\nExported on: ${new Date().toLocaleString()}\n\n---\n\n`;
     
     for (const context of contexts) {
-      markdown += `## ${context.title}\n\n`;
-      markdown += `**Type:** ${context.type}\n\n`;
+      markdown += `## (encrypted title)\n\n`;
       markdown += `**Created:** ${new Date(context._creationTime).toLocaleString()}\n\n`;
       if (context.projectId) {
         markdown += `**Project ID:** ${context.projectId}\n\n`;
+      }
+      if (context.tags && context.tags.length) {
+        markdown += `**Tags:** ${context.tags.join(", ")}\n\n`;
       }
       markdown += `**Content:** [Encrypted - decrypt client-side to view]\n\n`;
       markdown += `---\n\n`;
