@@ -342,7 +342,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // ============================================
 // CONTEXT MENU HANDLING
 // ============================================
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'uploadToAer') {
     let dataToUpload = {};
     
@@ -355,20 +355,25 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     } else {
       // Enrich with extracted page content
       try {
-        const page = await chrome.tabs.sendMessage(tab.id, { action: 'extractContent' });
-        if (page && page.content) {
-          dataToUpload.content = `Title: ${page.title}\nURL: ${page.url}\n\n${page.content}`;
+        if (tab?.id) {
+          const page = await chrome.tabs.sendMessage(tab.id, { action: 'extractContent' });
+          if (page && page.content) {
+            dataToUpload.content = `Title: ${page.title}\nURL: ${page.url}\n\n${page.content}`;
+          } else {
+            dataToUpload.content = `Page: ${tab.title}\nURL: ${tab.url}`;
+          }
         } else {
-          dataToUpload.content = `Page: ${tab.title}\nURL: ${tab.url}`;
+          dataToUpload.content = `Page: ${tab?.title || ''}\nURL: ${tab?.url || ''}`;
         }
-      } catch {
-        dataToUpload.content = `Page: ${tab.title}\nURL: ${tab.url}`;
+      } catch (e) {
+        console.warn('[ContextMenu] extractContent failed:', e);
+        dataToUpload.content = `Page: ${tab?.title || ''}\nURL: ${tab?.url || ''}`;
       }
     }
     
     dataToUpload.metadata = {
       pageUrl: info.pageUrl,
-      tabTitle: tab.title,
+      tabTitle: tab?.title,
       context: 'context_menu'
     };
     
