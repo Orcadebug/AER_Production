@@ -42,7 +42,7 @@ export default function Landing() {
         >
           <div className="inline-flex items-center gap-2 bg-[#8BA888]/10 border border-[#8BA888]/20 rounded-full px-4 py-2 mb-8">
             <Monitor className="h-4 w-4 text-[#8BA888]" />
-            <span className="text-sm font-medium text-[#8BA888]">Desktop + Browser + Cloud Sync</span>
+            <span className="text-sm font-medium text-[#8BA888]">Browser + Cloud today • Desktop rolling out</span>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight">
@@ -70,7 +70,7 @@ export default function Landing() {
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             <Button size="lg" variant="outline" className="text-lg px-8">
-              Download Platforms →
+              See Platforms
             </Button>
           </div>
         </motion.div>
@@ -201,7 +201,7 @@ export default function Landing() {
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
-                <span>Chrome • Firefox • Edge</span>
+                <span>Chrome (Edge compatible) • Firefox (planned)</span>
               </li>
             </ul>
           </motion.div>
@@ -418,45 +418,28 @@ export default function Landing() {
             </thead>
             <tbody>
               {[
-                { feature: "Desktop Apps", aer: true, notion: false, obsidian: true, savegpt: false },
-                { feature: "Browser Extension", aer: true, notion: false, obsidian: false, savegpt: true },
+                { feature: "Desktop Apps", aer: "Linux beta", notion: false, obsidian: true, savegpt: false },
+                { feature: "Browser Extension", aer: "Chrome (Edge compatible)", notion: false, obsidian: false, savegpt: true },
                 { feature: "Cloud Sync", aer: true, notion: true, obsidian: false, savegpt: true },
                 { feature: "E2E Encryption", aer: true, notion: false, obsidian: true, savegpt: false },
                 { feature: "Semantic Search", aer: true, notion: false, obsidian: false, savegpt: true },
-                { feature: "Windows/Mac/Linux", aer: true, notion: true, obsidian: true, savegpt: false },
-                { feature: "Offline Mode", aer: true, notion: false, obsidian: true, savegpt: false },
-                { feature: "Cross-Platform", aer: true, notion: true, obsidian: false, savegpt: false },
-              ].map((row, idx) => (
+                { feature: "Offline Mode", aer: "Soon", notion: false, obsidian: true, savegpt: false },
+              ].map((row: any, idx: number) => (
                 <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
                   <td className="p-4 font-medium">{row.feature}</td>
-                  <td className="p-4 text-center">
-                    {row.aer ? (
-                      <CheckCircle className="h-5 w-5 text-[#8BA888] mx-auto" />
-                    ) : (
-                      <X className="h-5 w-5 text-muted-foreground mx-auto" />
-                    )}
-                  </td>
-                  <td className="p-4 text-center">
-                    {row.notion ? (
-                      <CheckCircle className="h-5 w-5 text-muted-foreground mx-auto" />
-                    ) : (
-                      <X className="h-5 w-5 text-muted-foreground mx-auto" />
-                    )}
-                  </td>
-                  <td className="p-4 text-center">
-                    {row.obsidian ? (
-                      <CheckCircle className="h-5 w-5 text-muted-foreground mx-auto" />
-                    ) : (
-                      <X className="h-5 w-5 text-muted-foreground mx-auto" />
-                    )}
-                  </td>
-                  <td className="p-4 text-center">
-                    {row.savegpt ? (
-                      <CheckCircle className="h-5 w-5 text-muted-foreground mx-auto" />
-                    ) : (
-                      <X className="h-5 w-5 text-muted-foreground mx-auto" />
-                    )}
-                  </td>
+                  {([row.aer, row.notion, row.obsidian, row.savegpt] as any[]).map((val, i) => (
+                    <td key={i} className="p-4 text-center">
+                      {typeof val === "boolean" ? (
+                        val ? (
+                          <CheckCircle className="h-5 w-5 text-[#8BA888] mx-auto" />
+                        ) : (
+                          <X className="h-5 w-5 text-muted-foreground mx-auto" />
+                        )
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{String(val)}</span>
+                      )}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
@@ -529,7 +512,7 @@ export default function Landing() {
         >
           <h2 className="text-4xl font-bold tracking-tight mb-2">Your Context. Every Platform. One Click Away.</h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Free tier includes all platforms. No credit card required.
+            Free tier includes web + extensions; desktop betas rolling out. No credit card required.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
             <Button
