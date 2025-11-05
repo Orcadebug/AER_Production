@@ -250,17 +250,33 @@ function buildAssistPopup({ results, userId, query }) {
 
     insertBtn.addEventListener('click', async () => {
       const keyB64 = await derivedKeyB64Promise;
-      let content = decryptData(item.encryptedContent, keyB64) || decryptData(item.encryptedSummary, keyB64) || '';
-      if (!content && item.previewPlain && item.previewPlain.nonce === 'plain') {
-        // Fallback: insert preview if full decrypt not possible
-        content = item.previewPlain.ciphertext;
+      let full = decryptData(item.encryptedContent, keyB64) || '';
+      const summary = decryptData(item.encryptedSummary, keyB64) || '';
+      const preview = (item.previewPlain && item.previewPlain.nonce === 'plain') ? item.previewPlain.ciphertext : '';
+
+      // If only stub (e.g., just Page/URL lines), append whatever extra we have
+      const looksStub = typeof full === 'string' && /^(Page:|Title:)/.test(full) && full.trim().split('\n').length <= 3;
+      if ((!full || looksStub) && (summary || preview)) {
+        const extra = summary || preview;
+        // Avoid duplicating if already present
+        if (!full || !full.includes(extra.slice(0, 40))) {
+          full = `${full ? full + '\n\n' : ''}${extra}`;
+        }
       }
-      if (!content) {
+
+      if (!full) {
         showToast('Unable to decrypt this context');
         return;
       }
-      const prefix = query && query.length ? `${query}\n` : '';
-      const payload = `${prefix}Context from Aer (Full Details):\n${content}`;
+
+      // Compose helpful header
+      const header = [];
+      if (item.url) header.push(`URL: ${item.url}`);
+      if (Array.isArray(item.tags) && item.tags.length) header.push(`Tags: ${item.tags.join(', ')}`);
+      const headerBlock = header.length ? header.join('\n') + '\n\n' : '';
+
+      const prefix = query && query.length ? `${query}\n\n` : '';
+      const payload = `${prefix}Context from Aer — Full content\n${headerBlock}${full}`.trim();
       const target = lastFocusedEl || getActiveEditable();
       const ok = insertTextAtCursor(target, payload);
       if (ok) {
