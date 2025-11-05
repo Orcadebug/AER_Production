@@ -1,5 +1,9 @@
 import { motion } from "framer-motion";
-import { Brain, FileText, Search, Zap, ArrowRight, Shield, Cloud } from "lucide-react";
+import { 
+  Monitor, Smartphone, Globe, ArrowRight, Shield, Search, 
+  Upload, RefreshCw, Download, Chrome, Mail, Apple, 
+  Zap, FileText, Brain, CheckCircle, X, Star
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -9,12 +13,12 @@ export default function Landing() {
   const { isAuthenticated, isLoading } = useAuth();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Navigation */}
       <nav className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-<img src="/logo.png" alt="Aer" className="h-8 w-8" />
+            <img src="/logo.png" alt="Aer" className="h-8 w-8" />
             <span className="text-2xl font-bold tracking-tight">Aer</span>
           </div>
           <Button
@@ -34,22 +38,26 @@ export default function Landing() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center max-w-4xl mx-auto"
+          className="text-center max-w-5xl mx-auto"
         >
           <div className="inline-flex items-center gap-2 bg-[#8BA888]/10 border border-[#8BA888]/20 rounded-full px-4 py-2 mb-8">
-            <Zap className="h-4 w-4 text-[#8BA888]" />
-            <span className="text-sm font-medium text-[#8BA888]">AI-Powered Context OS with MCP Integration</span>
+            <Monitor className="h-4 w-4 text-[#8BA888]" />
+            <span className="text-sm font-medium text-[#8BA888]">Desktop + Browser + Cloud Sync</span>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
-            Your Personal
-            <span className="text-[#8BA888]"> Context </span>
-            Operating System
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight">
+            Your Context.
+            <span className="text-[#8BA888]"> Every Platform.</span>
+            <br />
+            One Click Away.
           </h1>
           
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Connect any AI model—ChatGPT, Claude, Gemini—to your personal context. 
-            Ask about your life, notes, or data, and get accurate answers powered by your encrypted knowledge base.
+          <p className="text-lg md:text-xl text-muted-foreground mb-4 max-w-3xl mx-auto">
+            Your context is scattered: AI chats in browsers, files on desktop, notes everywhere. Nothing syncs. Nothing's searchable.
+          </p>
+          
+          <p className="text-base text-muted-foreground mb-10 max-w-3xl mx-auto">
+            Aer fixes this. Upload from desktop or browser. Search everything instantly. Access your encrypted vault on all platforms.
           </p>
           
           <div className="flex gap-4 justify-center flex-wrap">
@@ -61,42 +69,14 @@ export default function Landing() {
               Start Free
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button size="lg" variant="outline" className="text-lg px-8" onClick={() => navigate("/terms")}>
-              Learn More
+            <Button size="lg" variant="outline" className="text-lg px-8">
+              Download Platforms →
             </Button>
           </div>
         </motion.div>
       </section>
 
-      {/* Pricing Section */}
-      <section className="container mx-auto px-4 py-16 border-t">
-        <h2 className="text-4xl font-bold tracking-tight text-center mb-10">Simple pricing</h2>
-        <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-          <div className="border rounded-xl p-6">
-            <h3 className="text-xl font-semibold mb-2">Free</h3>
-            <p className="text-muted-foreground mb-4">Start building your encrypted knowledge base</p>
-            <ul className="text-sm space-y-2 mb-6">
-              <li>• AI search (30 Perplexity calls / month)</li>
-              <li>• Notes, files, web captures</li>
-              <li>• Basic tags and projects</li>
-            </ul>
-            <Button variant="outline" onClick={() => navigate("/auth")}>Get started</Button>
-          </div>
-          <div className="border rounded-xl p-6">
-            <h3 className="text-xl font-semibold mb-2">Pro</h3>
-            <div className="text-3xl font-bold mb-2">$9<span className="text-base font-normal">/mo</span></div>
-            <p className="text-muted-foreground mb-4">Power user limits and priority AI</p>
-            <ul className="text-sm space-y-2 mb-6">
-              <li>• AI search (300 Perplexity calls / month)</li>
-              <li>• Higher storage limits</li>
-              <li>• Priority processing</li>
-            </ul>
-            <Button className="bg-[#8BA888] hover:bg-[#7A9777]" onClick={() => navigate("/auth")}>Upgrade</Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
+      {/* How It Works Section */}
       <section className="container mx-auto px-4 py-20 border-t">
         <motion.div
           initial={{ opacity: 0 }}
@@ -105,81 +85,463 @@ export default function Landing() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl font-bold tracking-tight mb-4">Everything You Need</h2>
-          <p className="text-xl text-muted-foreground">Built for scale, designed for simplicity</p>
+          <h2 className="text-4xl font-bold tracking-tight mb-4">How It Works</h2>
+          <p className="text-xl text-muted-foreground">Three simple steps to organize your entire digital life</p>
         </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {[
             {
-              icon: Brain,
-              title: "MCP Integration",
-              description: "Connect any AI model to your context. ChatGPT, Claude, Gemini—they all get instant access to your personal knowledge base.",
+              number: "1",
+              title: "Upload Anywhere",
+              description: "Desktop app for files & PDFs. Browser extension for AI chats. Works on Windows, Mac, Linux.",
+              icon: Upload
             },
             {
-              icon: Search,
-              title: "AI-Powered Search",
-              description: "Semantic search understands what you mean, not just what you type. Find anything instantly across all your contexts.",
+              number: "2",
+              title: "Search Everything",
+              description: "Semantic search finds anything across all sources in 2 seconds. From your desktop or phone.",
+              icon: Search
             },
             {
-              icon: FileText,
-              title: "Universal Capture",
-              description: "Notes, files, web content—capture everything in one place. PDFs, docs, and more supported with automatic tagging.",
+              number: "3",
+              title: "Access Everywhere",
+              description: "Same encrypted vault on all devices. Real-time sync. Works offline. Your keys only.",
+              icon: RefreshCw
             },
-            {
-              icon: Cloud,
-              title: "Cloud Native",
-              description: "Real-time sync across all devices. Your context is always up to date, everywhere, accessible to any connected AI.",
-            },
-            {
-              icon: Shield,
-              title: "Privacy First",
-              description: "End-to-end encrypted. You control what AI models can access. Export or delete anytime. Full compliance ready.",
-            },
-            {
-              icon: Zap,
-              title: "Lightning Fast",
-              description: "Built on modern serverless architecture. Scales effortlessly from 1 to millions of users with instant AI retrieval.",
-            },
-          ].map((feature, index) => (
+          ].map((step, index) => (
             <motion.div
-              key={feature.title}
+              key={step.title}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
               viewport={{ once: true }}
             >
-              <div className="border rounded-lg p-6 hover:border-[#8BA888] transition-colors h-full">
-                <feature.icon className="h-10 w-10 text-[#8BA888] mb-4" />
-                <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground">{feature.description}</p>
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-[#8BA888]/10 border border-[#8BA888]/20 mb-6 mx-auto">
+                  <span className="text-2xl font-bold text-[#8BA888]">{step.number}</span>
+                </div>
+                <step.icon className="h-8 w-8 text-[#8BA888] mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
+                <p className="text-muted-foreground">{step.description}</p>
               </div>
             </motion.div>
           ))}
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Platform Features Section */}
+      <section className="container mx-auto px-4 py-20 border-t">
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-4xl font-bold tracking-tight mb-4">One Tool. All Platforms.</h2>
+          <p className="text-xl text-muted-foreground">Desktop, browser, and cloud working together</p>
+        </motion.div>
+
+        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-12">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="border rounded-lg p-8 hover:border-[#8BA888]/50 transition-colors"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <Monitor className="h-6 w-6 text-[#8BA888]" />
+              <h3 className="text-2xl font-semibold">Desktop Apps</h3>
+            </div>
+            <ul className="space-y-3 text-muted-foreground">
+              <li className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
+                <span>Drag-drop files & PDFs</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
+                <span>Bulk uploads with tagging</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
+                <span>Offline mode, native performance</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
+                <span>Windows • Mac • Linux</span>
+              </li>
+            </ul>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="border rounded-lg p-8 hover:border-[#8BA888]/50 transition-colors"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <Chrome className="h-6 w-6 text-[#8BA888]" />
+              <h3 className="text-2xl font-semibold">Browser Extensions</h3>
+            </div>
+            <ul className="space-y-3 text-muted-foreground">
+              <li className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
+                <span>Auto-save AI chats</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
+                <span>Capture webpages instantly</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
+                <span>Inject context into prompts</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
+                <span>Chrome • Firefox • Edge</span>
+              </li>
+            </ul>
+          </motion.div>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="bg-[#8BA888]/5 border border-[#8BA888]/20 rounded-lg p-8 max-w-5xl mx-auto text-center"
+        >
+          <h4 className="text-lg font-semibold mb-4">All Platforms Include:</h4>
+          <div className="flex flex-wrap justify-center gap-8">
+            <div>
+              <RefreshCw className="h-6 w-6 text-[#8BA888] mx-auto mb-2" />
+              <p className="text-sm">Real-time encrypted sync</p>
+            </div>
+            <div>
+              <Shield className="h-6 w-6 text-[#8BA888] mx-auto mb-2" />
+              <p className="text-sm">Military-grade E2E encryption</p>
+            </div>
+            <div>
+              <Search className="h-6 w-6 text-[#8BA888] mx-auto mb-2" />
+              <p className="text-sm">Semantic search</p>
+            </div>
+            <div>
+              <Globe className="h-6 w-6 text-[#8BA888] mx-auto mb-2" />
+              <p className="text-sm">Cross-platform access</p>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* Use Cases Section */}
+      <section className="container mx-auto px-4 py-20 border-t">
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-4xl font-bold tracking-tight mb-4">Real Workflows</h2>
+          <p className="text-xl text-muted-foreground">Desktop + Browser working together</p>
+        </motion.div>
+
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          {[
+            {
+              title: "Research to Archive",
+              flow: "Upload PDFs on Linux desktop → Capture Claude analysis in browser → Search both on Mac"
+            },
+            {
+              title: "Chat to Vault",
+              flow: "Record ChatGPT conversation on Windows → Auto-save to Aer → Find insights on iPhone"
+            }
+          ].map((useCase, idx) => (
+            <motion.div
+              key={useCase.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.1 }}
+              viewport={{ once: true }}
+              className="border rounded-lg p-6"
+            >
+              <h3 className="text-lg font-semibold mb-3">{useCase.title}</h3>
+              <p className="text-muted-foreground italic">→ {useCase.flow}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section className="container mx-auto px-4 py-20 border-t">
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-4xl font-bold tracking-tight mb-4">Simple, Honest Pricing</h2>
+          <p className="text-xl text-muted-foreground">No hidden fees. Cancel anytime.</p>
+        </motion.div>
+
+        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          {[
+            {
+              name: "Free",
+              price: "$0",
+              description: "Perfect for trying it out",
+              features: [
+                "5GB encrypted storage",
+                "30 AI searches/month",
+                "Unlimited uploads",
+                "All platforms",
+                "Real-time sync",
+              ],
+              cta: "Get Started",
+              highlighted: false
+            },
+            {
+              name: "Pro",
+              price: "$15",
+              period: "/month",
+              description: "More usage, more peace of mind",
+              features: [
+                "100GB encrypted storage",
+                "500 AI searches/month",
+                "Unlimited uploads",
+                "All platforms",
+                "Real-time sync",
+                "Priority support",
+              ],
+              cta: "Upgrade Now",
+              highlighted: true
+            },
+            {
+              name: "Team",
+              price: "$49",
+              period: "/month",
+              description: "For teams (coming soon)",
+              features: [
+                "Unlimited storage",
+                "Unlimited AI searches",
+                "Shared vaults",
+                "Team management",
+                "Audit logs",
+                "API access",
+              ],
+              cta: "Notify Me",
+              highlighted: false
+            }
+          ].map((plan, idx) => (
+            <motion.div
+              key={plan.name}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.1 }}
+              viewport={{ once: true }}
+              className={`rounded-lg border p-8 flex flex-col ${
+                plan.highlighted
+                  ? "border-[#8BA888] bg-[#8BA888]/5 relative"
+                  : "border-border hover:border-[#8BA888]/50"
+              }`}
+            >
+              {plan.highlighted && (
+                <div className="absolute top-0 right-0 bg-[#8BA888] text-white text-xs font-semibold px-3 py-1 rounded-bl-lg rounded-tr-lg">
+                  Popular
+                </div>
+              )}
+              <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+              <p className="text-muted-foreground text-sm mb-4">{plan.description}</p>
+              <div className="mb-6">
+                <span className="text-4xl font-bold">{plan.price}</span>
+                {plan.period && <span className="text-muted-foreground ml-2">{plan.period}</span>}
+              </div>
+              <ul className="space-y-3 mb-8 flex-1">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2 text-sm">
+                    <CheckCircle className="h-4 w-4 text-[#8BA888] mt-0.5 flex-shrink-0" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                onClick={() => navigate("/auth")}
+                className={`w-full ${
+                  plan.highlighted
+                    ? "bg-[#8BA888] hover:bg-[#7A9777]"
+                    : "border border-input hover:bg-accent"
+                }`}
+                variant={plan.highlighted ? "default" : "outline"}
+              >
+                {plan.cta}
+              </Button>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Comparison Section */}
+      <section className="container mx-auto px-4 py-20 border-t">
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-4xl font-bold tracking-tight mb-4">Why Aer?</h2>
+          <p className="text-xl text-muted-foreground">The only tool with desktop + browser + cloud sync</p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="overflow-x-auto max-w-5xl mx-auto"
+        >
+          <table className="w-full border rounded-lg border-collapse">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="p-4 text-left font-semibold">Feature</th>
+                <th className="p-4 text-center font-semibold">Aer</th>
+                <th className="p-4 text-center font-semibold">Notion</th>
+                <th className="p-4 text-center font-semibold">Obsidian</th>
+                <th className="p-4 text-center font-semibold">SaveGPT</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { feature: "Desktop Apps", aer: true, notion: false, obsidian: true, savegpt: false },
+                { feature: "Browser Extension", aer: true, notion: false, obsidian: false, savegpt: true },
+                { feature: "Cloud Sync", aer: true, notion: true, obsidian: false, savegpt: true },
+                { feature: "E2E Encryption", aer: true, notion: false, obsidian: true, savegpt: false },
+                { feature: "Semantic Search", aer: true, notion: false, obsidian: false, savegpt: true },
+                { feature: "Windows/Mac/Linux", aer: true, notion: true, obsidian: true, savegpt: false },
+                { feature: "Offline Mode", aer: true, notion: false, obsidian: true, savegpt: false },
+                { feature: "Cross-Platform", aer: true, notion: true, obsidian: false, savegpt: false },
+              ].map((row, idx) => (
+                <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
+                  <td className="p-4 font-medium">{row.feature}</td>
+                  <td className="p-4 text-center">
+                    {row.aer ? (
+                      <CheckCircle className="h-5 w-5 text-[#8BA888] mx-auto" />
+                    ) : (
+                      <X className="h-5 w-5 text-muted-foreground mx-auto" />
+                    )}
+                  </td>
+                  <td className="p-4 text-center">
+                    {row.notion ? (
+                      <CheckCircle className="h-5 w-5 text-muted-foreground mx-auto" />
+                    ) : (
+                      <X className="h-5 w-5 text-muted-foreground mx-auto" />
+                    )}
+                  </td>
+                  <td className="p-4 text-center">
+                    {row.obsidian ? (
+                      <CheckCircle className="h-5 w-5 text-muted-foreground mx-auto" />
+                    ) : (
+                      <X className="h-5 w-5 text-muted-foreground mx-auto" />
+                    )}
+                  </td>
+                  <td className="p-4 text-center">
+                    {row.savegpt ? (
+                      <CheckCircle className="h-5 w-5 text-muted-foreground mx-auto" />
+                    ) : (
+                      <X className="h-5 w-5 text-muted-foreground mx-auto" />
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </motion.div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="container mx-auto px-4 py-20 border-t">
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-4xl font-bold tracking-tight mb-4">Common Questions</h2>
+        </motion.div>
+
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          {[
+            {
+              q: "Desktop vs browser extension?",
+              a: "Desktop app for files/PDFs. Browser extension for capturing AI chats and webpages. Use both together."
+            },
+            {
+              q: "Does it work offline?",
+              a: "Yes. Desktop apps have full offline mode. Browser extension syncs when you're back online."
+            },
+            {
+              q: "How does cross-device sync work?",
+              a: "Real-time end-to-end encrypted sync. Your data appears instantly on all devices. Keys never leave your devices."
+            },
+            {
+              q: "Linux feature parity?",
+              a: "Yes. Desktop app for Linux (.AppImage/.deb) has 100% same features as Windows and Mac."
+            },
+            {
+              q: "What file types are supported?",
+              a: "PDFs, Word docs, text files, images. Plus direct browser capture and paste. AI auto-tags everything."
+            },
+            {
+              q: "Can I export my data?",
+              a: "Yes. Export everything as JSON or Markdown. Your data, your keys, full control."
+            }
+          ].map((faq, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              viewport={{ once: true }}
+              className="border rounded-lg p-6"
+            >
+              <h3 className="font-semibold mb-2">{faq.q}</h3>
+              <p className="text-sm text-muted-foreground">{faq.a}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Final CTA */}
       <section className="container mx-auto px-4 py-20 border-t">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          className="bg-[#8BA888]/10 border border-[#8BA888]/20 rounded-2xl p-12 text-center max-w-4xl mx-auto"
+          className="bg-gradient-to-r from-[#8BA888]/10 to-[#8BA888]/5 border border-[#8BA888]/20 rounded-2xl p-12 text-center max-w-4xl mx-auto"
         >
-          <h2 className="text-4xl font-bold tracking-tight mb-4">Ready to Get Started?</h2>
-          <p className="text-xl text-muted-foreground mb-8">
-            Give any AI model access to your personal context—securely and privately
+          <h2 className="text-4xl font-bold tracking-tight mb-2">Your Context. Every Platform. One Click Away.</h2>
+          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Free tier includes all platforms. No credit card required.
           </p>
-          <Button
-            size="lg"
-            onClick={() => navigate("/auth")}
-            className="bg-[#8BA888] hover:bg-[#7A9777] text-lg px-8"
-          >
-            Create Your Account
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
+          <div className="flex gap-4 justify-center flex-wrap">
+            <Button
+              size="lg"
+              onClick={() => navigate("/auth")}
+              className="bg-[#8BA888] hover:bg-[#7A9777] text-lg px-8"
+            >
+              Start Free Now
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+            <Button size="lg" variant="outline" className="text-lg px-8">
+              Download All Platforms
+            </Button>
+          </div>
         </motion.div>
       </section>
 
