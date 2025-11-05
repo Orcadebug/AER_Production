@@ -166,11 +166,11 @@ export default function Landing() {
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
-                <span>Offline mode, native performance</span>
+                <span>Offline mode (coming soon)</span>
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
-                <span>Windows • Mac • Linux</span>
+                <span>Linux beta now; Windows/Mac coming soon</span>
               </li>
             </ul>
           </motion.div>
@@ -230,7 +230,7 @@ export default function Landing() {
             </div>
             <div>
               <Globe className="h-6 w-6 text-[#8BA888] mx-auto mb-2" />
-              <p className="text-sm">Cross-platform access</p>
+              <p className="text-sm">Cross-platform access (web + extensions; desktop rolling out)</p>
             </div>
           </div>
         </motion.div>
@@ -253,11 +253,11 @@ export default function Landing() {
           {[
             {
               title: "Research to Archive",
-              flow: "Upload PDFs on Linux desktop → Capture Claude analysis in browser → Search both on Mac"
+              flow: "Upload PDFs on Linux desktop → Capture Claude analysis in browser → Search both on the web"
             },
             {
               title: "Chat to Vault",
-              flow: "Record ChatGPT conversation on Windows → Auto-save to Aer → Find insights on iPhone"
+              flow: "Record ChatGPT conversation in browser → Auto-save to Aer → Find insights on any device (web)"
             }
           ].map((useCase, idx) => (
             <motion.div
@@ -298,7 +298,8 @@ export default function Landing() {
                 "5GB encrypted storage",
                 "30 AI searches/month",
                 "Unlimited uploads",
-                "All platforms",
+                "Web + extensions",
+                "Linux desktop beta",
                 "Real-time sync",
               ],
               cta: "Get Started",
@@ -313,7 +314,8 @@ export default function Landing() {
                 "100GB encrypted storage",
                 "500 AI searches/month",
                 "Unlimited uploads",
-                "All platforms",
+                "Web + extensions + Linux desktop beta",
+                "Priority access to desktop (Windows/Mac) rollouts",
                 "Real-time sync",
                 "Priority support",
               ],
@@ -482,7 +484,7 @@ export default function Landing() {
             },
             {
               q: "Does it work offline?",
-              a: "Yes. Desktop apps have full offline mode. Browser extension syncs when you're back online."
+              a: "Offline mode is coming soon. Today, uploads and search require connectivity; queued sync is planned."
             },
             {
               q: "How does cross-device sync work?",
@@ -490,7 +492,7 @@ export default function Landing() {
             },
             {
               q: "Linux feature parity?",
-              a: "Yes. Desktop app for Linux (.AppImage/.deb) has 100% same features as Windows and Mac."
+              a: "Linux desktop beta is available now. Windows and Mac apps are coming soon; feature parity will follow."
             },
             {
               q: "What file types are supported?",

@@ -154,6 +154,26 @@ export default function Dashboard() {
     ? (aiSearchResults !== null ? aiSearchResults : searchResults)
     : contextsResult?.page;
 
+  // Prefetch server-side plaintext fallbacks to avoid (Decrypting...) on initial load
+  useEffect(() => {
+    const prefetch = async () => {
+      if (!displayContexts || displayContexts.length === 0) return;
+      const firstBatch = displayContexts.slice(0, 12);
+      for (const c of firstBatch) {
+        try {
+          // If client decryption fails and we don't have a cached server fallback, fetch it
+          const local = c.encryptedContent ? decrypt(c.encryptedContent) : null;
+          if (!local && !serverPlainById[c._id]) {
+            const plain = await decryptServer({ id: c._id });
+            setServerPlainById((m) => ({ ...m, [c._id]: plain || "" }));
+          }
+        } catch {}
+      }
+    };
+    prefetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [encryptionReady, JSON.stringify(displayContexts?.map((c:any)=>c._id))]);
+
   if (isLoading || !encryptionReady) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -376,26 +396,6 @@ export default function Dashboard() {
     navigator.clipboard.writeText(summary);
     toast.success("Context copied to clipboard");
   };
-
-  // Prefetch server-side plaintext fallbacks to avoid (Decrypting...) on initial load
-  useEffect(() => {
-    const prefetch = async () => {
-      if (!displayContexts || displayContexts.length === 0) return;
-      const firstBatch = displayContexts.slice(0, 12);
-      for (const c of firstBatch) {
-        try {
-          // If client decryption fails and we don't have a cached server fallback, fetch it
-          const local = c.encryptedContent ? decrypt(c.encryptedContent) : null;
-          if (!local && !serverPlainById[c._id]) {
-            const plain = await decryptServer({ id: c._id });
-            setServerPlainById((m) => ({ ...m, [c._id]: plain || "" }));
-          }
-        } catch {}
-      }
-    };
-    prefetch();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [encryptionReady, JSON.stringify(displayContexts?.map((c:any)=>c._id))]);
 
   return (
     <div className="min-h-screen bg-background">
