@@ -42,38 +42,76 @@ pnpm preview
 
 ```
 src/
-├── pages/               # Page components (routing targets)
+├── pages/                  # Page components (routing targets)
+│   ├── Auth.tsx           # Authentication page
+│   ├── Dashboard.tsx      # Main dashboard
+│   ├── Landing.tsx        # Public landing page
+│   ├── Settings.tsx       # User settings
+│   ├── Support.tsx        # Support/feedback page
+│   ├── OAuthConsent.tsx   # OAuth consent flow
+│   ├── Terms.tsx          # Terms of service
+│   ├── Privacy.tsx        # Privacy policy
+│   └── NotFound.tsx       # 404 page
 ├── components/
-│   └── ui/             # Shadcn UI primitives (don't modify)
-├── hooks/              # Custom React hooks
-├── lib/                # Utility functions and helpers
-├── convex/             # Backend serverless functions & database
-│   ├── schema.ts       # Database schema definition
-│   ├── auth/           # Authentication setup (DO NOT MODIFY)
-│   ├── users.ts        # User queries/mutations
-│   ├── contexts.ts     # Context/note management
-│   ├── projects.ts     # Project management
-│   ├── tags.ts         # Tag management
-│   ├── ai.ts           # AI tag generation & semantic search
-│   ├── httpApi.ts      # HTTP endpoints for external integrations
-│   ├── audit.ts        # Audit logging
-│   └── mcp/            # Model context protocol for AI integrations
-├── types/              # TypeScript type definitions
-└── index.css           # Tailwind configuration & color variables
+│   ├── ui/                # Shadcn UI primitives (don't modify)
+│   ├── security/          # Security components (ErrorBoundary, SafeContent)
+│   └── [other components] # Feature-specific components
+├── hooks/
+│   ├── use-auth.ts        # Authentication hook
+│   ├── use-encryption.ts  # Client-side encryption
+│   └── use-mobile.ts      # Mobile detection
+├── lib/                   # Utility functions and helpers
+├── types/                 # TypeScript type definitions
+├── convex/                # Backend serverless functions & database
+│   ├── _generated/        # Auto-generated Convex API types
+│   ├── schema.ts          # Database schema definition
+│   ├── auth/              # Authentication setup (DO NOT MODIFY)
+│   ├── auth.ts            # Auth exports
+│   ├── auth.config.ts     # Auth configuration
+│   ├── users.ts           # User queries/mutations
+│   ├── contexts.ts        # Context/note management
+│   ├── contextsInternal.ts # Internal context helpers
+│   ├── projects.ts        # Project management
+│   ├── projectsInternal.ts # Internal project helpers
+│   ├── tags.ts            # Tag management
+│   ├── ai.ts              # AI tag generation & semantic search
+│   ├── httpApi.ts         # HTTP endpoints for external integrations
+│   ├── http.ts            # HTTP utilities
+│   ├── oauth.ts           # OAuth flow
+│   ├── oauthInternal.ts   # Internal OAuth helpers
+│   ├── oauthPublic.ts     # Public OAuth endpoints
+│   ├── payments.ts        # Payment management
+│   ├── payApi.ts          # Payment API endpoints
+│   ├── paymentsWebhook.ts # Payment webhook handlers
+│   ├── paymentsInternal.ts # Internal payment helpers
+│   ├── audit.ts           # Audit logging
+│   ├── admin.ts           # Admin functions
+│   ├── entitlements.ts    # Entitlements/permissions
+│   ├── redeem.ts          # Redemption code handling
+│   ├── crypto.ts          # Encryption utilities
+│   ├── feedback.ts        # Feedback/support tickets
+│   └── mcp/               # Model context protocol for AI integrations
+│       ├── index.ts       # MCP integration entry point
+│       ├── aiModels.ts    # AI model configuration
+│       └── server.ts      # MCP server
+├── instrumentation.tsx    # Analytics and observability
+├── index.css              # Tailwind configuration & color variables
+└── main.tsx               # Application entry point with routing
 ```
 
 ## Critical Authentication Files (DO NOT MODIFY)
 
-- `src/convex/auth.ts` - Core Convex Auth setup
+- `src/convex/auth/` - Core Convex Auth setup directory
+- `src/convex/auth.ts` - Auth exports
 - `src/convex/auth.config.ts` - Auth configuration
 - `src/convex/auth/emailOtp.ts` - Email OTP provider configuration
-- `src/main.tsx` - Routes and auth provider setup
+- `src/main.tsx` - Routes and auth provider setup with ConvexAuthProvider
 
 ## Key Architecture Patterns
 
 ### Frontend Architecture
 
-**Routing**: React Router v7 centralized in `src/main.tsx`. Add new routes there and create corresponding page components in `src/pages/`.
+**Routing**: React Router v7 centralized in `src/main.tsx`. Routes include `/`, `/dashboard`, `/settings`, `/support`, `/terms`, `/privacy`, `/auth`, `/oauth/consent`. Add new routes there and create corresponding page components in `src/pages/`.
 
 **Authentication Hook**: Always use `useAuth()` hook from `@/hooks/use-auth` to access user data. Example:
 ```typescript
@@ -100,12 +138,14 @@ const { isLoading, isAuthenticated, user, signIn, signOut } = useAuth();
 - `tags` - AI-generated semantic tags for search
 - `feedback` - Support tickets
 - `auditLog` - Encryption event logging
+- `payments` - Payment transactions and history
+- `entitlements` - User feature entitlements
 
 **Convex Patterns**:
 - **Queries**: Get data, use in React components via `useQuery()` hook
 - **Mutations**: Modify data, use via `useMutation()` hook
 - **Actions**: External API calls (require `"use node"`), use via `useAction()` hook
-- **Internal Functions**: Server-only helpers, prefixed with `internal.*`
+- **Internal Functions**: Server-only helpers, prefixed with `internal.*`, defined in `*Internal.ts` files
 
 **CRUD Operations**: Use pre-built CRUD helpers in files like `users.ts`:
 ```typescript
@@ -113,13 +153,24 @@ import { crud } from "convex-helpers/server/crud";
 const { create, read, update, destroy } = crud(schema, "tableName");
 ```
 
-**HTTP API**: Public endpoints in `src/convex/httpApi.ts` for external integrations. All endpoints require bearer token authentication.
+**HTTP API**: Public endpoints in `src/convex/httpApi.ts` for external integrations. All endpoints require bearer token authentication. Payment webhooks in `paymentsWebhook.ts`.
 
 **AI Integration**: 
 - Tag generation (`generateTags` action) creates 3-10 hierarchical tags based on content
 - Semantic search (`semanticSearchPublic`) ranks contexts by relevance
 - Summary generation (`generateSummary`) creates 2-3 sentence summaries
 - Perplexity AI API requires `PERPLEXITY_API_KEY` environment variable
+- MCP integration in `src/convex/mcp/` for AI model context protocol
+
+**Payments & Entitlements**: 
+- Stripe integration via `payments.ts` and `payApi.ts`
+- Payment webhooks handled in `paymentsWebhook.ts`
+- Feature entitlements managed in `entitlements.ts`
+- Redemption codes handled in `redeem.ts`
+
+**OAuth Flow**: 
+- OAuth configuration in `oauth.ts`, `oauthInternal.ts`, `oauthPublic.ts`
+- OAuth consent flow page at `/oauth/consent`
 
 **Encryption Model**: 
 - Content is encrypted client-side and stored as `{ciphertext, nonce}` objects
@@ -149,7 +200,10 @@ const { create, read, update, destroy } = crud(schema, "tableName");
 ### API Endpoints
 - POST `/api/context/upload` - Single context upload with bearer token
 - POST `/api/context/batch-upload` - Batch context upload
-- Token format: `aer_{userId}`
+- POST `/api/search` - Semantic search endpoint
+- POST `/api/tags` - Generate tags for content
+- POST `/api/payment` - Payment endpoints (Stripe)
+- Bearer token format: `aer_{userId}`
 
 ### File Uploads
 - `fileId` references Convex storage (actual files not encrypted)

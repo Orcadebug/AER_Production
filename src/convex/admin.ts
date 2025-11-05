@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getCurrentUser } from "./users";
+import { internal } from "./_generated/api";
+import { serverDecryptString } from "./crypto";
 
 export const deleteAllUserData = mutation({
   args: {},
@@ -39,6 +41,78 @@ export const deleteAllUserData = mutation({
     }
 
     return { success: true, message: "All data deleted successfully" };
+  },
+});
+
+// Backfill tags/summary/title+project for current user's contexts
+export const backfillMyContexts = mutation({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Unauthorized");
+
+    const all = await ctx.db
+      .query("contexts")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .collect();
+
+    const totalContexts = all.length;
+    const targets = (args.limit && args.limit > 0) ? all.slice(0, args.limit) : all;
+
+    let scheduled = 0;
+    for (const c of targets) {
+      // Try to recover a plaintext preview
+      let preview = "";
+      try {
+        if ((c as any).encryptedContent?.ciphertext && (c as any).encryptedContent?.nonce) {
+          const p = serverDecryptString((c as any).encryptedContent.ciphertext, (c as any).encryptedContent.nonce);
+          if (p) preview = p.substring(0, 1500);
+        }
+      } catch {}
+      if (!preview && (c as any).encryptedSummary) {
+        const s = (c as any).encryptedSummary as any;
+        if (s.nonce === "plain") preview = s.ciphertext.substring(0, 1500);
+        else {
+          try {
+            const p = serverDecryptString(s.ciphertext, s.nonce);
+            if (p) preview = p.substring(0, 1500);
+          } catch {}
+        }
+      }
+      if (!preview) continue; // cannot enrich without preview
+
+      // Schedule missing pieces
+      try {
+        if (!(c as any).tags || (c as any).tags.length === 0) {
+          await ctx.scheduler.runAfter(0, internal.ai.generateAndUpdateTags, {
+            userId: user._id,
+            contextId: (c as any)._id,
+            content: preview,
+            title: (c as any).title || "",
+            totalContexts,
+          });
+          scheduled++;
+        }
+        if (!(c as any).encryptedSummary) {
+          await ctx.scheduler.runAfter(0, internal.ai.generateAndUpdateEncryptedSummary, {
+            userId: user._id,
+            contextId: (c as any)._id,
+            content: preview,
+          });
+          scheduled++;
+        }
+        // Title + project refinement
+        await ctx.scheduler.runAfter(0, internal.ai.generateAndUpdateTitleAndProject, {
+          userId: user._id,
+          contextId: (c as any)._id,
+          content: preview,
+          currentTitle: (c as any).title || "",
+        });
+      } catch {}
+    }
+
+    return { success: true, processed: targets.length, scheduled };
   },
 });
 

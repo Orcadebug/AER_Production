@@ -32,6 +32,21 @@ export const createForUser = internalMutation({
       throw new Error("Missing encrypted content");
     }
 
+    // Compute plaintext title for indexing/search
+    const computedTitle = (() => {
+      if ((args as any).title && typeof (args as any).title === "string") return ((args as any).title as string).slice(0, 80);
+      if (args.fileName) return args.fileName.slice(0, 80);
+      if (args.url) {
+        try { const u = new URL(args.url); return (u.hostname + (u.pathname !== "/" ? u.pathname : "")).slice(0, 80); } catch {}
+      }
+      if ((args as any).plaintextContent && typeof (args as any).plaintextContent === "string") {
+        const s = (args as any).plaintextContent as string;
+        const first = s.split(/\n|\.\s/)[0] || s;
+        return first.slice(0, 80);
+      }
+      return "Untitled";
+    })();
+
     const contextId = await ctx.db.insert("contexts", {
       userId: args.userId,
       projectId: args.projectId,
@@ -41,6 +56,7 @@ export const createForUser = internalMutation({
       fileName: args.fileName,
       fileType: args.fileType,
       url: args.url,
+      title: computedTitle,
       encryptedContent: args.encryptedContent,
       encryptedTitle: args.encryptedTitle,
       encryptedSummary: args.encryptedSummary,
@@ -67,6 +83,13 @@ export const createForUser = internalMutation({
         userId: args.userId,
         contextId,
         content: args.plaintextContent,
+      });
+      // Auto title refinement and project classification
+      await ctx.scheduler.runAfter(0, internal.ai.generateAndUpdateTitleAndProject, {
+        userId: args.userId,
+        contextId,
+        content: args.plaintextContent,
+        currentTitle: computedTitle,
       });
     }
 

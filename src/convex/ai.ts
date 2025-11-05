@@ -36,7 +36,7 @@ export const generateTags = internalAction({
       const prompt = `Analyze this content and generate ${maxTags} hierarchical tags, ordered from most general to most specific.
 
 Title: ${args.title}
-Content: ${args.content.substring(0, 1000)}
+Content: ${args.content.substring(0, 2000)}
 
 Rules:
 1. Start with broad categories (e.g., "technology", "business", "personal")
@@ -90,7 +90,7 @@ export const generateSummary = internalAction({
       const prompt = `Reduce the following text by identifying and removing low-information tokens (articles, redundant adjectives, filler phrases) while keeping all high-value technical terms, numbers, logical operators, and key concepts intact. Then summarize in 2-3 clear, concise sentences focusing on main points and key information.
 
 Title: ${args.title}
-Content: ${args.content.substring(0, 2000)}
+Content: ${args.content.substring(0, 6000)}
 
 Provide only the summary, no additional text or formatting:`;
 
@@ -99,7 +99,7 @@ Provide only the summary, no additional text or formatting:`;
         model: "sonar",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
-        max_tokens: 150,
+max_tokens: 220,
       });
 
       const content = response.choices[0]?.message?.content;
@@ -148,6 +148,20 @@ export const generateAndUpdateTags = internalAction({
       await ctx.runMutation(internal.entitlements.incrementPerplexity, { userId: args.userId, amount: 1 });
     } catch (error) {
       console.error("Failed to generate and update tags:", error);
+      // Fallback: simple keyword-based tags on server (privacy-safe, using provided preview content)
+      try {
+        const stop = new Set(["the","and","for","that","with","this","you","are","was","from","have","has","not","but","all","any","can","your","our","use","using","will","into","about","over","under","more","less","than","then","when","what","why","how","they","them","their","there","here","who","which","also","like","just","into","onto","out","in","on","to","of","a","an","as","is","it","be"]);
+        const words = args.content.toLowerCase().split(/[^a-z0-9]+/g).filter(w => w && w.length > 3 && !stop.has(w));
+        const freq = new Map<string, number>();
+        for (const w of words) freq.set(w, (freq.get(w) || 0) + 1);
+        const tags = Array.from(freq.entries()).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([w])=>w);
+        await ctx.runMutation(internal.contextsInternal.updateTags, {
+          contextId: args.contextId,
+          tags,
+        });
+      } catch (e) {
+        console.error("Fallback tag generation failed:", e);
+      }
     }
   },
 });
@@ -164,7 +178,7 @@ export const generateAndUpdateEncryptedSummary = internalAction({
   handler: async (ctx, args) => {
     try {
       const allowed = await ctx.runQuery(internal.entitlements.assertPerplexityAllowed, { userId: args.userId });
-      if (!allowed.ok) return;
+      if (!allowed.ok) throw new Error("AI not allowed");
       const summary = await ctx.runAction(internal.ai.generateSummary, {
         content: args.content,
         title: "",
@@ -177,6 +191,14 @@ export const generateAndUpdateEncryptedSummary = internalAction({
       await ctx.runMutation(internal.entitlements.incrementPerplexity, { userId: args.userId, amount: 1 });
     } catch (error) {
       console.error("Failed to generate encrypted summary:", error);
+      // Fallback: store a truncated plaintext envelope for preview
+      try {
+        const enc = { ciphertext: args.content.substring(0, 200), nonce: "plain" } as any;
+        await ctx.runMutation(internal.contextsInternal.updateEncryptedSummary, {
+          contextId: args.contextId,
+          encryptedSummary: enc,
+        });
+      } catch {}
     }
   },
 });

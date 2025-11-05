@@ -5,6 +5,7 @@
   "description": "Capture and save web content to your Aer context OS with end-to-end encryption",
   "permissions": [
     "activeTab",
+    "scripting",
     "storage",
     "cookies",
     "contextMenus",
@@ -15,7 +16,7 @@
     "http://*/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.bundle.js"
   },
   "action": {
     "default_popup": "popup.html",
@@ -34,7 +35,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": ["content.js", "prompt_inject.bundle.js"],
       "run_at": "document_idle"
     }
   ],

@@ -4,8 +4,13 @@
 // ============================================
 // CONFIGURATION - UPDATE THESE VALUES
 // ============================================
-const AER_API_ENDPOINT = 'https://brilliant-caribou-800.convex.site/api/context/upload';
+const DEFAULT_API_BASE = 'https://brilliant-caribou-800.convex.site';
+const AER_API_ENDPOINT = `${DEFAULT_API_BASE}/api/context/upload`;
 const API_TOKEN = ''; // Will be loaded from storage
+
+// Crypto (client-side E2E)
+const nacl = require('tweetnacl');
+const { encodeBase64, decodeBase64 } = require('tweetnacl-util');
 
 // ============================================
 // GLOBAL STATE
@@ -32,17 +37,50 @@ chrome.runtime.onInstalled.addListener(() => {
     }
   });
   
-  // Create context menu
+  // Create context menus
   chrome.contextMenus.create({
     id: 'uploadToAer',
     title: 'Upload to Aer',
     contexts: ['selection', 'page', 'link', 'image']
+  });
+  chrome.contextMenus.create({
+    id: 'uploadFullToAer',
+    title: 'Upload Full Page to Aer',
+    contexts: ['selection', 'page']
+  });
+  chrome.contextMenus.create({
+    id: 'uploadSummaryToAer',
+    title: 'Upload AI Summary to Aer',
+    contexts: ['selection', 'page']
+  });
+  chrome.contextMenus.create({
+    id: 'findFromAer',
+    title: 'Find relevant info from Aer',
+    contexts: ['editable', 'selection']
   });
 });
 
 // ============================================
 // CORE UPLOAD FUNCTIONALITY - MAIN FIX HERE
 // ============================================
+
+async function deriveKeyFromUserIdB64(userId) {
+  const enc = new TextEncoder();
+  const data = enc.encode(userId);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  const bytes = new Uint8Array(hash).slice(0, 32);
+  return encodeBase64(bytes);
+}
+
+function encryptWithKeyB64(plaintext, keyB64) {
+  const key = decodeBase64(keyB64);
+  const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
+  const msg = new TextEncoder().encode(typeof plaintext === 'string' ? plaintext : String(plaintext));
+  const boxed = nacl.secretbox(msg, nonce, key);
+  return { ciphertext: encodeBase64(boxed), nonce: encodeBase64(nonce) };
+}
+
+
 
 /**
  * Prepares raw data for upload by ensuring it has the correct field names
@@ -68,35 +106,40 @@ function prepareDataForUpload(rawData) {
   
   // Handle objects
   if (typeof rawData === 'object') {
-    // If it already has the correct fields, return as-is
+    // Pass-through fields we should preserve
+    const passthrough = {};
+    const passthroughKeys = ['metadata','timestamp','summaryOnly','tags','encryptedTitle','encryptedSummary','url','fileName','fileType','title'];
+    for (const k of passthroughKeys) {
+      if (rawData[k] !== undefined) passthrough[k] = rawData[k];
+    }
+
+    // If it already has a supported payload, keep it and merge passthrough
     if (rawData.content || rawData.plaintext || rawData.encryptedContent) {
-      return rawData;
+      return { ...rawData, ...passthrough };
     }
     
     // Map 'encrypted' to 'encryptedContent'
     if (rawData.encrypted) {
       return { 
         encryptedContent: rawData.encrypted,
-        ...(rawData.metadata && { metadata: rawData.metadata }),
-        ...(rawData.timestamp && { timestamp: rawData.timestamp })
+        ...passthrough,
       };
     }
     
     // Check for common content field names and map them to 'content'
-    const possibleContentFields = ['text', 'message', 'body', 'data', 'value', 'html', 'url'];
+    const possibleContentFields = ['text', 'message', 'body', 'data', 'value', 'html'];
     for (const field of possibleContentFields) {
       if (rawData[field] !== undefined) {
         const value = rawData[field];
         return { 
           content: typeof value === 'string' ? value : JSON.stringify(value),
-          ...(rawData.metadata && { metadata: rawData.metadata }),
-          ...(rawData.timestamp && { timestamp: rawData.timestamp })
+          ...passthrough,
         };
       }
     }
     
     // If no recognized fields, stringify the entire object
-    return { content: JSON.stringify(rawData) };
+    return { content: JSON.stringify(rawData), ...passthrough };
   }
   
   // For any other type, convert to string
@@ -131,8 +174,6 @@ async function uploadToAer(data) {
       throw new Error('Payload must contain either "content", "plaintext", or "encryptedContent"');
     }
 
-    console.log('[Upload] Final payload to send:', JSON.stringify(payload));
-
     // Get auth token from storage
     const storage = await chrome.storage.local.get(['authToken', 'token']);
     const authToken = storage.authToken || storage.token || API_TOKEN;
@@ -141,8 +182,47 @@ async function uploadToAer(data) {
       throw new Error('No authentication token configured. Please set up authentication first.');
     }
 
-    // Make the API request
-    const response = await fetch(AER_API_ENDPOINT, {
+    // Derive client-side encryption key from token (aer_{userId})
+    const userId = authToken.startsWith('aer_') ? authToken.substring(4) : null;
+    if (!userId) throw new Error('Invalid token format; expected aer_{userId}');
+    const keyB64 = await deriveKeyFromUserIdB64(userId);
+
+    // If we have plaintext content, encrypt it client-side
+    if (!payload.encryptedContent) {
+      const plain = typeof payload.plaintext === 'string' && payload.plaintext.length > 0
+        ? payload.plaintext
+        : (typeof payload.content === 'string' ? payload.content : '');
+      payload.encryptedContent = encryptWithKeyB64(plain, keyB64);
+      delete payload.plaintext;
+      delete payload.content;
+    }
+
+    // Do not set title on the client; backend will compute/refine and index title
+
+    // Provide a short plaintext preview for server-side AI enrichment (not stored)
+    const srcAll = typeof data.plaintext === 'string' ? data.plaintext : (typeof data.content === 'string' ? data.content : '');
+    if (!payload.summaryOnly && srcAll && srcAll.trim()) {
+      payload.plaintext = srcAll.trim().slice(0, 1200);
+    }
+
+    // Do not attach client summary; backend will generate preview/summary
+
+    // If summaryOnly was requested upstream, ensure encryptedContent is just a short summary
+    if (payload.summaryOnly && payload.encryptedContent && (data.plaintext || data.content)) {
+      const src = typeof data.plaintext === 'string' ? data.plaintext : (typeof data.content === 'string' ? data.content : '');
+      const preview = (src || '').trim().slice(0, 500);
+      payload.encryptedContent = encryptWithKeyB64(preview, keyB64);
+      // Also set encryptedSummary = same preview to improve UI
+      payload.encryptedSummary = encryptWithKeyB64(preview, keyB64);
+    }
+
+    // Do NOT set tags on the client; let backend AI generate tags and project
+
+    console.log('[Upload] Final payload to send (E2E):', JSON.stringify({ ...payload, encryptedContent: { ...payload.encryptedContent, ciphertext: 'omitted' } }));
+
+    // Make the API request (dynamic dev/prod base)
+    const base = await getApiBaseUrl();
+    const response = await fetch(`${base}/api/context/upload`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -208,6 +288,36 @@ async function uploadToAer(data) {
 // ============================================
 // MESSAGE HANDLING - LINE 178 FIX IS HERE
 // ============================================
+async function getApiBaseUrl() {
+  const res = await chrome.storage.local.get(['apiUrl', 'apiBaseUrl']);
+  return res.apiUrl || res.apiBaseUrl || DEFAULT_API_BASE;
+}
+
+function isRestrictedUrl(url) {
+  if (!url) return true;
+  const lower = url.toLowerCase();
+  return lower.startsWith('chrome://') || lower.startsWith('edge://') || lower.startsWith('about:') || lower.startsWith('view-source:') || lower.startsWith('chrome-extension://') || lower.startsWith('file://');
+}
+
+async function ensureAssistScripts(tabId, url) {
+  if (!tabId) return false;
+  // First, ping existing content world
+  try {
+    const pong = await chrome.tabs.sendMessage(tabId, { action: 'ping' });
+    if (pong && pong.ok) return true;
+  } catch {}
+  // Inject only the assist overlay (prompt_inject); the manifest already injects content.js
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['prompt_inject.bundle.js'] });
+  } catch (e) { console.warn('[EnsureAssist] inject prompt_inject.bundle.js failed:', e); }
+  try {
+    const pong2 = await chrome.tabs.sendMessage(tabId, { action: 'ping' });
+    return !!pong2;
+  } catch {
+    return false;
+  }
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('[Background] Message received:', request);
   
@@ -268,18 +378,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           };
         }
         
-        // Check if encryption is enabled
-        if (extensionSettings.encryptData) {
-          const contentToEncrypt = dataToUpload.content || dataToUpload.plaintext || '';
-          dataToUpload = {
-            encryptedContent: btoa(contentToEncrypt), // Simple base64 for demo
-            metadata: dataToUpload.metadata
-          };
-        }
+        // Always E2E encrypt in uploadToAer
+        console.log('[Background] Final data to upload (pre-encrypt):', dataToUpload);
         
-        console.log('[Background] Final data to upload:', dataToUpload);
-        
-        // THIS IS THE FIX FOR LINE 178 - data is now properly formatted
+        // THIS IS THE FIX FOR LINE 178 - data is now properly formatted and encrypted in uploadToAer
         const result = await uploadToAer(dataToUpload);
         
         sendResponse({ success: true, result });
@@ -328,11 +430,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
     }
 
-    case 'testConnection':
-      fetch(AER_API_ENDPOINT, { method: 'OPTIONS' })
-        .then(() => sendResponse({ success: true, message: 'Connection successful' }))
-        .catch(error => sendResponse({ success: false, error: error.message }));
+    case 'testConnection': {
+      (async () => {
+        try {
+          const base = await getApiBaseUrl();
+          await fetch(`${base}/api/context/upload`, { method: 'OPTIONS' });
+          sendResponse({ success: true, message: 'Connection successful' });
+        } catch (error) {
+          sendResponse({ success: false, error: error.message });
+        }
+      })();
       return true;
+    }
 
     default:
       sendResponse({ success: false, error: 'Unknown action: ' + request.action });
@@ -342,8 +451,47 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // ============================================
 // CONTEXT MENU HANDLING
 // ============================================
+async function robustExtractPage(tabId) {
+  // Try content script first
+  try {
+    const page = await chrome.tabs.sendMessage(tabId, { action: 'extractContent' });
+    if (page && page.content && page.content.length > 0) {
+      return page;
+    }
+  } catch (e) {
+    console.warn('[Extract] content.js pathway failed, falling back to scripting:', e);
+  }
+
+  // Fallback: execute in page context
+  try {
+    const [{ result }] = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: 'MAIN',
+      func: () => {
+        try {
+          const prune = (root) => {
+            const sel = 'script, style, nav, header, footer, iframe, noscript, svg, canvas, video, audio';
+            root.querySelectorAll(sel).forEach((el) => el.remove());
+          };
+          const clone = document.body.cloneNode(true);
+          prune(clone);
+          const text = (clone.innerText || clone.textContent || '').replace(/\s+/g, ' ').trim();
+          const content = text.substring(0, 20000);
+          return { title: document.title, url: location.href, content };
+        } catch (e) {
+          return { title: document.title, url: location.href, content: '' };
+        }
+      },
+    });
+    return result;
+  } catch (e) {
+    console.warn('[Extract] scripting fallback failed:', e);
+    return { title: tab?.title || '', url: tab?.url || '', content: '' };
+  }
+}
+
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId === 'uploadToAer') {
+  if (info.menuItemId === 'uploadToAer' || info.menuItemId === 'uploadFullToAer') {
     let dataToUpload = {};
     
     if (info.selectionText) {
@@ -353,11 +501,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     } else if (info.srcUrl) {
       dataToUpload.content = `Image: ${info.srcUrl}`;
     } else {
-      // Enrich with extracted page content
+      // Enrich with extracted page content (robust)
       try {
         if (tab?.id) {
-          const page = await chrome.tabs.sendMessage(tab.id, { action: 'extractContent' });
-          if (page && page.content) {
+          const page = await robustExtractPage(tab.id);
+          if (page && page.content && page.content.length > 0) {
             dataToUpload.content = `Title: ${page.title}\nURL: ${page.url}\n\n${page.content}`;
           } else {
             dataToUpload.content = `Page: ${tab.title}\nURL: ${tab.url}`;
@@ -366,7 +514,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
           dataToUpload.content = `Page: ${tab?.title || ''}\nURL: ${tab?.url || ''}`;
         }
       } catch (e) {
-        console.warn('[ContextMenu] extractContent failed:', e);
+        console.warn('[ContextMenu] robustExtractPage failed:', e);
         dataToUpload.content = `Page: ${tab?.title || ''}\nURL: ${tab?.url || ''}`;
       }
     }
@@ -380,6 +528,119 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     uploadToAer(dataToUpload)
       .then(result => console.log('[Background] Context menu upload successful'))
       .catch(error => console.error('[Background] Context menu upload failed:', error));
+  }
+
+  if (info.menuItemId === 'uploadSummaryToAer') {
+    // Build plaintext from selection or full page, then upload summary-only (client-encrypted)
+    try {
+      let plain = '';
+      if (info.selectionText && info.selectionText.trim().length > 0) {
+        plain = info.selectionText.trim();
+      } else if (tab?.id) {
+        try {
+          const page = await robustExtractPage(tab.id);
+          if (page && page.content) {
+            plain = `Title: ${page.title}\nURL: ${page.url}\n\n${page.content}`;
+          } else {
+            plain = `Page: ${tab.title || ''}\nURL: ${tab.url || ''}`;
+          }
+        } catch (e) {
+          plain = `Page: ${tab?.title || ''}\nURL: ${tab?.url || ''}`;
+        }
+      }
+
+      const payload = {
+        plaintext: plain,
+        summaryOnly: true,
+        metadata: {
+          pageUrl: info.pageUrl || tab?.url,
+          tabTitle: tab?.title,
+          context: 'context_menu_summary'
+        }
+      };
+
+      const result = await uploadToAer(payload);
+      console.log('[Background] Summary upload successful', result);
+    } catch (e) {
+      console.error('[Background] Summary upload failed:', e);
+    }
+  }
+
+  if (info.menuItemId === 'findFromAer') {
+    try {
+      if (!tab?.id || !tab?.url || isRestrictedUrl(tab.url)) {
+        chrome.notifications.create({
+          type: 'basic', iconUrl: chrome.runtime.getURL('icon128.png'),
+          title: 'Aer Assist', message: 'Cannot run on this page.'
+        });
+        return;
+      }
+
+      // Ensure content scripts are present
+      await ensureAssistScripts(tab.id, tab.url);
+
+      // Determine query from selection or active input
+      let query = info.selectionText || '';
+      if ((!query || query.trim().length === 0) && tab?.id) {
+        try {
+          const resp = await chrome.tabs.sendMessage(tab.id, { action: 'getActiveInputValue' });
+          if (resp && typeof resp.value === 'string') {
+            query = resp.value;
+          }
+        } catch (e) {
+          console.warn('[FindFromAer] Could not read active input value:', e);
+        }
+      }
+      query = (query || '').toString().slice(0, 500);
+
+      // Get auth + api base
+      const storage = await chrome.storage.local.get(['authToken', 'token', 'apiUrl', 'apiBaseUrl']);
+      const authToken = storage.authToken || storage.token || API_TOKEN;
+      if (!authToken) {
+        chrome.notifications.create({
+          type: 'basic', iconUrl: chrome.runtime.getURL('icon128.png'),
+          title: 'Aer Assist', message: 'Please configure your Aer token first.'
+        });
+        return;
+      }
+      const apiBase = storage.apiUrl || storage.apiBaseUrl || DEFAULT_API_BASE;
+
+      // Extract userId from token format aer_{userId}
+      const userId = authToken.startsWith('aer_') ? authToken.substring(4) : '';
+
+      // Call search endpoint
+      const searchUrl = `${apiBase}/api/context/search`;
+      const res = await fetch(searchUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ query, limit: 20 })
+      });
+      const json = await res.json().catch(() => ({ success: false }));
+      if (!res.ok || !json.success) {
+        throw new Error(json?.error || `Search failed (${res.status})`);
+      }
+
+      // Ensure scripts before showing popup
+      await ensureAssistScripts(tab.id, tab.url);
+      // Send results to content script to render popup
+      if (tab?.id) {
+        await chrome.tabs.sendMessage(tab.id, {
+          action: 'showAssistPopup',
+          results: json.results || [],
+          userId,
+          query,
+        });
+      }
+    } catch (e) {
+      console.error('[FindFromAer] Error:', e);
+      chrome.notifications.create({
+        type: 'basic', iconUrl: chrome.runtime.getURL('icon128.png'),
+        title: 'Aer Assist', message: `Search failed: ${e?.message || e}`
+      });
+    }
   }
 });
 

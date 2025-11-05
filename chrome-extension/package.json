@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Chrome extension for Aer context capture",
   "scripts": {
-    "build": "webpack background.js --mode production --output-path . --output-filename background.bundle.js"
+    "build": "webpack --mode production --entry ./background.js --output-path . --output-filename background.bundle.js && webpack --mode production --entry ./prompt_inject.js --output-path . --output-filename prompt_inject.bundle.js"
   },
   "dependencies": {
     "convex": "^1.27.0",

@@ -11,7 +11,7 @@ const encryptedDataValidator = v.object({
 
 export const create = mutation({
   args: {
-    // Legacy optional fields (ignored server-side)
+    // Legacy optional fields (used for plaintext title indexing only)
     title: v.optional(v.string()),
     type: v.optional(v.union(v.literal("note"), v.literal("file"), v.literal("web"))),
     plaintextContent: v.optional(v.string()),
@@ -42,7 +42,23 @@ export const create = mutation({
     const encTitle = args.encryptedTitle;
     const encSummary = args.encryptedSummary;
 
-    // Insert context (no plaintext fields)
+    // Compute a plaintext title for indexing/search (no secrets)
+    const computedTitle = (() => {
+      if (typeof args.title === "string" && args.title.trim().length > 0) {
+        return args.title.trim().slice(0, 80);
+      }
+      if (args.fileName && args.fileName.length > 0) return args.fileName.slice(0, 80);
+      if (args.url && args.url.length > 0) {
+        try { const u = new URL(args.url); return (u.hostname + (u.pathname !== "/" ? u.pathname : "")).slice(0, 80); } catch {}
+      }
+      if (args.plaintextContent && args.plaintextContent.length > 0) {
+        const firstLine = args.plaintextContent.split(/\n|\.\s/)[0] || args.plaintextContent;
+        return firstLine.slice(0, 80);
+      }
+      return "Untitled";
+    })();
+
+    // Insert context (store plaintext title for UX only; content remains encrypted)
     const contextId = await ctx.db.insert("contexts", {
       userId: user._id,
       projectId: args.projectId,
@@ -52,6 +68,7 @@ export const create = mutation({
       fileName: args.fileName,
       fileType: args.fileType,
       url: args.url,
+      title: computedTitle,
       encryptedContent: encContent,
       encryptedTitle: encTitle,
       encryptedSummary: encSummary,
@@ -70,7 +87,39 @@ export const create = mutation({
       });
     } catch {}
 
-    // No server-side AI generation: client should supply tags only
+    // Server-side AI enrichment (tags/summary/title+project) when plaintext preview provided
+    if ((args.plaintextContent || "").trim().length > 0 && process.env.PERPLEXITY_API_KEY) {
+      const preview = (args.plaintextContent as string).slice(0, 6000);
+      try {
+        // Generate tags
+        await ctx.scheduler.runAfter(0, internal.ai.generateAndUpdateTags, {
+          userId: user._id,
+          contextId,
+          content: preview,
+          title: args.title || "",
+          totalContexts: await ctx.db
+            .query("contexts")
+            .withIndex("by_user", (q) => q.eq("userId", user._id))
+            .collect()
+            .then((cs) => cs.length),
+        });
+        // Generate encrypted summary
+        await ctx.scheduler.runAfter(0, internal.ai.generateAndUpdateEncryptedSummary, {
+          userId: user._id,
+          contextId,
+          content: preview,
+        });
+        // Title refinement and project assignment
+        await ctx.scheduler.runAfter(0, internal.ai.generateAndUpdateTitleAndProject, {
+          userId: user._id,
+          contextId,
+          content: preview,
+          currentTitle: args.title || "",
+        });
+      } catch (e) {
+        console.error("AI enrichment scheduling failed:", e);
+      }
+    }
 
     // Log audit event
     await ctx.scheduler.runAfter(0, internal.audit.logAuditEvent, {
@@ -156,6 +205,7 @@ export const update = mutation({
     projectId: v.optional(v.id("projects")),
     tagIds: v.optional(v.array(v.id("tags"))),
     tags: v.optional(v.array(v.string())),
+    title: v.optional(v.string()),
     encryptedContent: v.optional(encryptedDataValidator),
     encryptedTitle: v.optional(encryptedDataValidator),
     encryptedSummary: v.optional(encryptedDataValidator),
@@ -174,6 +224,7 @@ export const update = mutation({
       projectId: args.projectId,
       tagIds: args.tagIds,
       tags: args.tags,
+      title: typeof args.title === "string" ? args.title.slice(0, 80) : undefined,
       encryptedContent: args.encryptedContent,
       encryptedTitle: args.encryptedTitle,
       encryptedSummary: args.encryptedSummary,

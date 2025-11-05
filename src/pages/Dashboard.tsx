@@ -332,7 +332,7 @@ export default function Dashboard() {
     return typeMap[mimeType] || mimeType.split("/")[1]?.toUpperCase() || "FILE";
   };
 
-  // Decrypt full context content
+      // Decrypt full context content
   const getDecryptedContent = (context: any) => {
     if (context.encryptedContent) {
       const decrypted = decrypt(context.encryptedContent);
@@ -376,6 +376,26 @@ export default function Dashboard() {
     navigator.clipboard.writeText(summary);
     toast.success("Context copied to clipboard");
   };
+
+  // Prefetch server-side plaintext fallbacks to avoid (Decrypting...) on initial load
+  useEffect(() => {
+    const prefetch = async () => {
+      if (!displayContexts || displayContexts.length === 0) return;
+      const firstBatch = displayContexts.slice(0, 12);
+      for (const c of firstBatch) {
+        try {
+          // If client decryption fails and we don't have a cached server fallback, fetch it
+          const local = c.encryptedContent ? decrypt(c.encryptedContent) : null;
+          if (!local && !serverPlainById[c._id]) {
+            const plain = await decryptServer({ id: c._id });
+            setServerPlainById((m) => ({ ...m, [c._id]: plain || "" }));
+          }
+        } catch {}
+      }
+    };
+    prefetch();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [encryptionReady, JSON.stringify(displayContexts?.map((c:any)=>c._id))]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -426,15 +446,15 @@ export default function Dashboard() {
                   Add Note
                 </Button>
               </DialogTrigger>
-              <DialogContent>
-                <form onSubmit={handleAddNote}>
+              <DialogContent className="max-h-[90vh] overflow-y-auto flex flex-col">
+                <form onSubmit={handleAddNote} className="flex flex-col gap-4">
                   <DialogHeader>
                     <DialogTitle>Add New Note</DialogTitle>
                     <DialogDescription>Create a new encrypted context entry</DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 py-4">
+                  <div className="space-y-4 py-4 overflow-y-auto flex-1">
                     <Input name="title" placeholder="Title" required />
-                    <Textarea name="content" placeholder="Content" rows={6} required />
+                    <Textarea name="content" placeholder="Content" rows={8} required className="resize-none" />
                     <Select name="projectId">
                       <SelectTrigger>
                         <SelectValue placeholder="Select project (optional)" />
@@ -449,7 +469,7 @@ export default function Dashboard() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <DialogFooter>
+                  <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
                     <Button type="submit" className="bg-[#8BA888] hover:bg-[#7A9777]">
                       Add Note
                     </Button>
@@ -617,7 +637,7 @@ export default function Dashboard() {
                       <CardTitle className="text-lg flex items-center gap-2">
                         {context.type === "file" && <FileText className="h-4 w-4" />}
                         <Lock className="h-3 w-3 text-muted-foreground" />
-                        {context.title}
+                        {getDecryptedTitle(context)}
                       </CardTitle>
                       <CardDescription className="text-xs mt-1">
                         {new Date(context._creationTime).toLocaleDateString()}

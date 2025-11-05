@@ -1,6 +1,6 @@
 import { httpRouter } from "convex/server";
 import { auth } from "./auth";
-import { uploadContext, batchUploadContexts } from "./httpApi";
+import { uploadContext, batchUploadContexts, searchContexts } from "./httpApi";
 import { mcpEndpoint } from "./mcp/index";
 import { oauthAuthorize, oauthToken } from "./oauth";
 import { stripeWebhook } from "./paymentsWebhook";
@@ -22,6 +22,13 @@ http.route({
   path: "/api/context/batch-upload",
   method: "POST",
   handler: batchUploadContexts,
+});
+
+// Semantic/tag search endpoint for extension assist
+http.route({
+  path: "/api/context/search",
+  method: "POST",
+  handler: searchContexts,
 });
 
 // Payments webhook
