@@ -169,39 +169,53 @@
 
   function extractGemini() {
     try {
-      // Prefer explicit chat message containers
+      const root = document.querySelector('main, [role="main"]') || document.body;
+
+      function isVisible(el) {
+        if (!el || !el.getBoundingClientRect) return false;
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < window.innerHeight;
+      }
+      function inCentralColumn(el) {
+        const r = el.getBoundingClientRect();
+        const leftOK = r.left > window.innerWidth * 0.1;
+        const rightOK = r.right < window.innerWidth * 0.9;
+        return r.width > 300 && leftOK && rightOK;
+      }
+
+      // Candidate message nodes within the current conversation area
       const selectors = [
-        '[aria-live="polite"]',
-        '[role="listitem"]',
         'article',
+        '[role="listitem"]',
+        '[aria-live="polite"] *',
         'div[class*="prose"]',
-        'md-content',
-        'mat-mdc-list'
       ];
-      let nodes = [];
-      selectors.forEach(sel => nodes.push(...Array.from(document.querySelectorAll(sel))));
-      const parts = [];
-      nodes.forEach((n) => {
-        const base = (n.innerText || n.textContent || '').trim();
-        if (base) parts.push(base);
-        // open shadow roots inside these nodes
-        if (n.shadowRoot) {
-          const sr = (n.shadowRoot.innerText || n.shadowRoot.textContent || '').trim();
-          if (sr) parts.push(sr);
-        }
-      });
-      // Scan main for open shadow roots as well
-      const main = document.querySelector('main, [role="main"]') || document.body;
-      main.querySelectorAll('*').forEach((el) => {
-        if (el.shadowRoot) {
-          const sr = (el.shadowRoot.innerText || el.shadowRoot.textContent || '').trim();
-          if (sr) parts.push(sr);
-        }
-      });
-      const text = parts.filter(Boolean).join('\n\n');
-      if (text && text.length > 0) return cleanText(text);
-      // Fallback: main area
-      const txt = (main.innerText || main.textContent || '').trim();
+      let candidates = [];
+      selectors.forEach(sel => candidates.push(...Array.from(root.querySelectorAll(sel))));
+
+      // Keep nodes that are visible and located in the central content column
+      const msgs = candidates
+        .filter((n) => isVisible(n) && inCentralColumn(n))
+        .map((n) => (n.innerText || n.textContent || '').trim())
+        .filter(Boolean)
+        // Deduplicate consecutive identicals
+        .filter((t, i, arr) => i === 0 || t !== arr[i - 1]);
+
+      // Limit to last 12 message blocks to reflect the current chat context
+      const recent = msgs.slice(-12);
+      if (recent.length > 0) return cleanText(recent.join('\n\n'));
+
+      // Fallback: visible text from central area only
+      const blocks = Array.from(root.querySelectorAll('*'))
+        .filter((el) => isVisible(el) && inCentralColumn(el))
+        .map((el) => (el.innerText || el.textContent || '').trim())
+        .filter(Boolean);
+      if (blocks.length > 0) return cleanText(blocks.slice(-20).join('\n\n'));
+
+      // Last resort: root text
+      const txt = (root.innerText || root.textContent || '').trim();
       return cleanText(txt);
     } catch { return ''; }
   }
