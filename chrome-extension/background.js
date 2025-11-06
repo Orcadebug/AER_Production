@@ -192,9 +192,14 @@ async function uploadToAer(data) {
       const plain = typeof payload.plaintext === 'string' && payload.plaintext.length > 0
         ? payload.plaintext
         : (typeof payload.content === 'string' ? payload.content : '');
-      payload.encryptedContent = encryptWithKeyB64(plain, keyB64);
-      delete payload.plaintext;
-      delete payload.content;
+      if (plain && plain.length > 0) {
+        payload.encryptedContent = encryptWithKeyB64(plain, keyB64);
+        // IMPORTANT: for summaryOnly uploads the server needs plaintext
+        if (!payload.summaryOnly) {
+          delete payload.plaintext;
+          delete payload.content;
+        }
+      }
     }
 
     // Do not set title on the client; backend will compute/refine and index title

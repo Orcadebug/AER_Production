@@ -47,6 +47,10 @@
         const t = extractClaude();
         if (t && t.length > 0) return t.slice(0, 20000);
       }
+      if (/gemini\.google\.com|bard\.google\.com|ai\.google\.com\/.+gemini/i.test(host + location.pathname)) {
+        const t = extractGemini();
+        if (t && t.length > 0) return t.slice(0, 20000);
+      }
 
       // 4) Generic: prefer role=main
       const main = document.querySelector('main, [role="main"]');
@@ -159,6 +163,45 @@
       }
       const main = document.querySelector('main, [role="main"]');
       const txt = main ? (main.innerText || main.textContent || '') : '';
+      return cleanText(txt);
+    } catch { return ''; }
+  }
+
+  function extractGemini() {
+    try {
+      // Prefer explicit chat message containers
+      const selectors = [
+        '[aria-live="polite"]',
+        '[role="listitem"]',
+        'article',
+        'div[class*="prose"]',
+        'md-content',
+        'mat-mdc-list'
+      ];
+      let nodes = [];
+      selectors.forEach(sel => nodes.push(...Array.from(document.querySelectorAll(sel))));
+      const parts = [];
+      nodes.forEach((n) => {
+        const base = (n.innerText || n.textContent || '').trim();
+        if (base) parts.push(base);
+        // open shadow roots inside these nodes
+        if (n.shadowRoot) {
+          const sr = (n.shadowRoot.innerText || n.shadowRoot.textContent || '').trim();
+          if (sr) parts.push(sr);
+        }
+      });
+      // Scan main for open shadow roots as well
+      const main = document.querySelector('main, [role="main"]') || document.body;
+      main.querySelectorAll('*').forEach((el) => {
+        if (el.shadowRoot) {
+          const sr = (el.shadowRoot.innerText || el.shadowRoot.textContent || '').trim();
+          if (sr) parts.push(sr);
+        }
+      });
+      const text = parts.filter(Boolean).join('\n\n');
+      if (text && text.length > 0) return cleanText(text);
+      // Fallback: main area
+      const txt = (main.innerText || main.textContent || '').trim();
       return cleanText(txt);
     } catch { return ''; }
   }
