@@ -221,6 +221,17 @@ async function uploadToAer(data) {
       payload.encryptedSummary = encryptWithKeyB64(preview, keyB64);
     }
 
+    // Safety net: summaryOnly MUST include plaintext for backend validation
+    if (payload.summaryOnly) {
+      const existingPlain = typeof payload.plaintext === 'string' ? payload.plaintext.trim() : '';
+      if (!existingPlain) {
+        const sourcePlain = typeof data.plaintext === 'string' ? data.plaintext : (typeof data.content === 'string' ? data.content : '');
+        if (sourcePlain && sourcePlain.trim()) {
+          payload.plaintext = sourcePlain.trim().slice(0, 1200);
+        }
+      }
+    }
+
     // Do NOT set tags on the client; let backend AI generate tags and project
 
     console.log('[Upload] Final payload to send (E2E):', JSON.stringify({ ...payload, encryptedContent: { ...payload.encryptedContent, ciphertext: 'omitted' } }));
@@ -323,6 +334,82 @@ async function ensureAssistScripts(tabId, url) {
   }
 }
 
+// ============================================
+// Semantic search + client-side relevance ranking
+// ============================================
+async function semanticSearch(query, authToken, apiBase, limit = 20) {
+  const endpointCandidates = [
+    `${apiBase}/api/search`,
+    `${apiBase}/api/context/search`,
+  ];
+  let json = { success: false, results: [] };
+  let lastErr = null;
+  for (const url of endpointCandidates) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+        body: JSON.stringify({ query, limit })
+      });
+      const data = await res.json().catch(() => ({ success: false }));
+      if (res.ok && (data.success || Array.isArray(data.results))) {
+        json = { success: true, results: data.results || [] };
+        break;
+      }
+      lastErr = new Error(data?.error || `HTTP ${res.status}`);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  if (!json.success) throw lastErr || new Error('Semantic search failed');
+  return json;
+}
+
+function normalizeText(s) {
+  return (s || '').toString().toLowerCase();
+}
+
+function simpleRelevanceScore(query, item) {
+  const q = normalizeText(query);
+  const qTokens = new Set(q.split(/[^a-z0-9]+/).filter(Boolean));
+  const title = normalizeText(item.title);
+  const url = normalizeText(item.url);
+  const tags = Array.isArray(item.tags) ? item.tags.map(t => normalizeText(t)) : [];
+  const previewPlain = (item.previewPlain && item.previewPlain.nonce === 'plain') ? normalizeText(item.previewPlain.ciphertext) : '';
+
+  let score = 0;
+  // Title exact/partial matches
+  if (title) {
+    if (title.includes(q)) score += 20;
+    for (const t of qTokens) if (title.includes(t)) score += 3;
+  }
+  // Tags overlap
+  for (const t of tags) if (qTokens.has(t)) score += 5;
+  // URL host hints
+  if (url.includes('github') && (q.includes('code') || q.includes('repo'))) score += 2;
+  if (url.includes('docs') && q.includes('docs')) score += 2;
+  // Preview text overlap (if plaintext available)
+  if (previewPlain) {
+    if (previewPlain.includes(q)) score += 15;
+    else {
+      let hits = 0;
+      for (const t of qTokens) if (previewPlain.includes(t)) hits++;
+      score += Math.min(hits, 5) * 2;
+    }
+  }
+  // Small boost if item has summary
+  if (item.encryptedSummary) score += 1;
+  // Server-provided score if present
+  if (typeof item.score === 'number') score += item.score; // additive combine
+  return score;
+}
+
+function rankByRelevance(query, items) {
+  return (items || [])
+    .map(it => ({ ...it, _score: simpleRelevanceScore(query, it) }))
+    .sort((a, b) => (b._score || 0) - (a._score || 0));
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('[Background] Message received:', request);
   
@@ -372,6 +459,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           console.warn('[Upload] Could not extract page content:', e);
         }
         
+        // Detect source from tab URL and add as tag
+        let sourceTags = [];
+        if (sender.tab?.url) {
+          const url = sender.tab.url.toLowerCase();
+          if (url.includes('gemini.google.com') || url.includes('ai.google.com')) sourceTags.push('source:gemini');
+          else if (url.includes('claude.ai')) sourceTags.push('source:claude');
+          else if (url.includes('chatgpt.com') || url.includes('openai.com')) sourceTags.push('source:chatgpt');
+          else if (url.includes('perplexity.ai')) sourceTags.push('source:perplexity');
+          else if (url.includes('copilot.microsoft.com')) sourceTags.push('source:copilot');
+          else if (url.includes('github.com')) sourceTags.push('source:github');
+        }
+        // Merge source tags with existing tags
+        if (sourceTags.length) {
+          dataToUpload.tags = Array.isArray(dataToUpload.tags) ? [...dataToUpload.tags, ...sourceTags] : sourceTags;
+        }
+        
         // Add metadata from sender if available
         if (sender.tab) {
           dataToUpload.metadata = {
@@ -399,6 +502,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Keep message channel open for async response
   }
   
+  // Assist semantic search for live prompt
+  if (request.action === 'assistSearch') {
+    (async () => {
+      try {
+        const query = (request.query || '').toString().trim();
+        if (!query || query.length < 3) return sendResponse({ success: true, results: [] });
+        const storage = await chrome.storage.local.get(['authToken', 'token', 'apiUrl', 'apiBaseUrl']);
+        const authToken = storage.authToken || storage.token || API_TOKEN;
+        if (!authToken) throw new Error('No auth token');
+        const apiBase = storage.apiUrl || storage.apiBaseUrl || DEFAULT_API_BASE;
+        const userId = authToken.startsWith('aer_') ? authToken.substring(4) : '';
+        const { results } = await semanticSearch(query, authToken, apiBase, 30);
+        const ranked = rankByRelevance(query, results).slice(0, 15);
+        sendResponse({ success: true, results: ranked, userId });
+      } catch (e) {
+        console.error('[AssistSearch] Error:', e);
+        sendResponse({ success: false, error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
   // Handle other actions
   switch (request.action) {
     case 'getSettings':
@@ -475,7 +600,7 @@ async function robustExtractPage(tabId) {
       func: () => {
         try {
           const prune = (root) => {
-            const sel = 'script, style, nav, header, footer, iframe, noscript, svg, canvas, video, audio';
+            const sel = 'script, style, nav, header, footer, aside, [role="navigation"], [aria-label*="history" i], [aria-label*="conversations" i], iframe, noscript, svg, canvas, video, audio';
             root.querySelectorAll(sel).forEach((el) => el.remove());
           };
           const clone = document.body.cloneNode(true);
@@ -613,20 +738,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       // Extract userId from token format aer_{userId}
       const userId = authToken.startsWith('aer_') ? authToken.substring(4) : '';
 
-      // Call search endpoint
-      const searchUrl = `${apiBase}/api/context/search`;
-      const res = await fetch(searchUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({ query, limit: 20 })
-      });
-      const json = await res.json().catch(() => ({ success: false }));
-      if (!res.ok || !json.success) {
-        throw new Error(json?.error || `Search failed (${res.status})`);
-      }
+      // Semantic search + client-side ranking
+      const { results } = await semanticSearch(query, authToken, apiBase, 30);
+      const ranked = rankByRelevance(query, results).slice(0, 15);
 
       // Ensure scripts before showing popup
       await ensureAssistScripts(tab.id, tab.url);
@@ -634,7 +748,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       if (tab?.id) {
         await chrome.tabs.sendMessage(tab.id, {
           action: 'showAssistPopup',
-          results: json.results || [],
+          results: ranked,
           userId,
           query,
         });

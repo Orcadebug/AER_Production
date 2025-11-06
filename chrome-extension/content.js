@@ -171,6 +171,8 @@
     try {
       const root = document.querySelector('main, [role="main"]') || document.body;
 
+      const NAV_SIDEBAR_SEL = 'aside, nav, header, footer, [role="navigation"], [aria-label*="history" i], [aria-label*="conversations" i], [data-testid*="sidebar" i], [class*="sidebar" i]';
+
       function isVisible(el) {
         if (!el || !el.getBoundingClientRect) return false;
         const style = window.getComputedStyle(el);
@@ -180,24 +182,60 @@
       }
       function inCentralColumn(el) {
         const r = el.getBoundingClientRect();
-        const leftOK = r.left > window.innerWidth * 0.1;
-        const rightOK = r.right < window.innerWidth * 0.9;
-        return r.width > 300 && leftOK && rightOK;
+        const centerX = (r.left + r.right) / 2;
+        const withinCenterBand = centerX > window.innerWidth * 0.25 && centerX < window.innerWidth * 0.75;
+        return r.width > 360 && withinCenterBand;
+      }
+      function withinConversationArea(el) {
+        if (!el) return false;
+        // Exclude anything under obvious nav/sidebars
+        if (el.closest(NAV_SIDEBAR_SEL)) return false;
+        return true;
       }
 
-      // Candidate message nodes within the current conversation area
+      // Try to locate the active conversation container (feed/list) first
+      const containerCandidates = Array.from(root.querySelectorAll('[role="feed"], [role="list"], [aria-live="polite"], c-wiz, section'))
+        .filter((el) => withinConversationArea(el) && isVisible(el) && inCentralColumn(el));
+
+      function scoreContainer(el) {
+        const r = el.getBoundingClientRect();
+        const areaScore = Math.log(1 + r.width * r.height);
+        const msgCount = el.querySelectorAll('article, [role="listitem"], div[class*="prose"], [data-message-author-role]').length;
+        return msgCount * 10 + areaScore;
+      }
+
+      let convoRoot = null;
+      if (containerCandidates.length) {
+        convoRoot = containerCandidates.sort((a, b) => scoreContainer(b) - scoreContainer(a))[0];
+      }
+      // If no clear container found, use root but still exclude nav/sidebars later
+      if (!convoRoot) convoRoot = root;
+
+      // Prefer JSON/code blocks from the assistant (Gemini often renders structured JSON in code blocks)
+      const jsonBlocks = Array.from(convoRoot.querySelectorAll('pre, code, pre code, div[class*="code"], code[class*="language-json"], [data-language="json"]'))
+        .filter((el) => withinConversationArea(el) && isVisible(el) && inCentralColumn(el))
+        .map((el) => (el.innerText || el.textContent || '').trim())
+        .filter((t) => t && /[{\[]/.test(t) && /:\s*"?\w/.test(t));
+      if (jsonBlocks.length) {
+        // Return the largest JSON-looking block
+        const best = jsonBlocks.sort((a, b) => b.length - a.length)[0];
+        return cleanText(best).slice(0, 20000);
+      }
+
+      // Candidate message nodes within the conversation area only
       const selectors = [
         'article',
         '[role="listitem"]',
         '[aria-live="polite"] *',
         'div[class*="prose"]',
+        '[data-message-author-role]'
       ];
       let candidates = [];
-      selectors.forEach(sel => candidates.push(...Array.from(root.querySelectorAll(sel))));
+      selectors.forEach(sel => candidates.push(...Array.from(convoRoot.querySelectorAll(sel))));
 
-      // Keep nodes that are visible and located in the central content column
+      // Keep nodes that are visible, in center, not within nav/sidebars
       const msgs = candidates
-        .filter((n) => isVisible(n) && inCentralColumn(n))
+        .filter((n) => withinConversationArea(n) && isVisible(n) && inCentralColumn(n))
         .map((n) => (n.innerText || n.textContent || '').trim())
         .filter(Boolean)
         // Deduplicate consecutive identicals
@@ -207,15 +245,15 @@
       const recent = msgs.slice(-12);
       if (recent.length > 0) return cleanText(recent.join('\n\n'));
 
-      // Fallback: visible text from central area only
-      const blocks = Array.from(root.querySelectorAll('*'))
-        .filter((el) => isVisible(el) && inCentralColumn(el))
+      // Fallback: visible text from central area only, excluding sidebars/nav
+      const blocks = Array.from(convoRoot.querySelectorAll('*'))
+        .filter((el) => withinConversationArea(el) && isVisible(el) && inCentralColumn(el))
         .map((el) => (el.innerText || el.textContent || '').trim())
         .filter(Boolean);
       if (blocks.length > 0) return cleanText(blocks.slice(-20).join('\n\n'));
 
-      // Last resort: root text
-      const txt = (root.innerText || root.textContent || '').trim();
+      // Last resort: convoRoot text (still excludes outside nav due to root selection)
+      const txt = (convoRoot.innerText || convoRoot.textContent || '').trim();
       return cleanText(txt);
     } catch { return ''; }
   }

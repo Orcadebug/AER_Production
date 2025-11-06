@@ -349,3 +349,5 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   return false;
 });
+
+// Auto-assist disabled: use manual right-click "Find relevant info from Aer" instead

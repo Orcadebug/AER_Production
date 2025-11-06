@@ -213,6 +213,18 @@ const schema = defineSchema(
       expiresAt: v.number(),
       createdAt: v.number(),
     }).index("by_token", ["accessToken"]),
+
+    // Password reset tokens (temporary, auto-expire)
+    password_reset_tokens: defineTable({
+      userId: v.id("users"),
+      tokenHash: v.string(), // SHA-256 hash of the actual token
+      email: v.string(),
+      expiresAt: v.number(),
+      used: v.boolean(),
+    })
+      .index("by_token_hash", ["tokenHash"])
+      .index("by_user", ["userId"])
+      .index("by_expiry", ["expiresAt"]),
   },
   {
     schemaValidation: false,

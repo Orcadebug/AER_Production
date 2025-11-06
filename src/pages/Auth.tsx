@@ -14,6 +14,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { ArrowRight, Loader2, Mail, Lock } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import { useConvex } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 import { APP_CONFIG } from "@/lib/config";
 
@@ -27,6 +29,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resetEligibleEmail, setResetEligibleEmail] = useState<string | null>(null);
+  const convex = useConvex();
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -94,10 +98,21 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       // Check if the error indicates the user doesn't exist
       if (!isSignUp && errorMessage.includes("InvalidSecret")) {
         setError("No account found with this email. Please sign up first.");
+        setResetEligibleEmail(null);
       } else if (isSignUp) {
         setError("Failed to create account. Please try again.");
+        setResetEligibleEmail(null);
       } else {
         setError("Invalid email or password. Please try again.");
+        // Only after wrong password attempt: check if email exists, then enable reset link
+        try {
+          if (lastEmail) {
+            const exists = await convex.query(api.users.emailExists, { email: lastEmail });
+            setResetEligibleEmail(exists ? lastEmail : null);
+          }
+        } catch {
+          setResetEligibleEmail(null);
+        }
       }
       setIsLoading(false);
     }
@@ -205,20 +220,33 @@ src="/logo.png"
                 </Button>
               </form>
 
-              <div className="text-center text-sm">
-                <Button
-                  variant="link"
-                  className="p-0 h-auto"
-                  onClick={() => {
-                    setIsSignUp(!isSignUp);
-                    setError(null);
-                  }}
-                  disabled={isLoading}
-                >
-                  {isSignUp 
-                    ? "Already have an account? Sign in" 
-                    : "Don't have an account? Sign up"}
-                </Button>
+              <div className="text-center text-sm space-y-2">
+                <div>
+                  <Button
+                    variant="link"
+                    className="p-0 h-auto"
+                    onClick={() => {
+                      setIsSignUp(!isSignUp);
+                      setError(null);
+                    }}
+                    disabled={isLoading}
+                  >
+                    {isSignUp 
+                      ? "Already have an account? Sign in" 
+                      : "Don't have an account? Sign up"}
+                  </Button>
+                </div>
+                {!isSignUp && resetEligibleEmail && (
+                  <div>
+                    <Button
+                      variant="link"
+                      className="p-0 h-auto text-muted-foreground hover:text-foreground"
+                      onClick={() => navigate(`/password-reset?prefill=${encodeURIComponent(resetEligibleEmail!)}`)}
+                    >
+                      Forgot your password? Reset it
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardContent>
 

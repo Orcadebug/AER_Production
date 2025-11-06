@@ -50,3 +50,17 @@ export const getUserById = internalQuery({
     return await ctx.db.get(args.userId);
   },
 });
+
+// Public query used sparingly to confirm if an email is registered.
+// Used only after a failed password attempt to conditionally show the reset link.
+export const emailExists = query({
+  args: { email: v.string() },
+  handler: async (ctx, { email }) => {
+    const normalized = email.toLowerCase().trim();
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", normalized))
+      .first();
+    return !!user;
+  },
+});
