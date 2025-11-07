@@ -46,6 +46,11 @@ export default function Privacy() {
             <li>Develop new features and functionality</li>
           </ul>
 
+          <h2>2a. Data Usage and No Monetization</h2>
+          <p>
+            We do not use, share, or monetize your data for advertising or analytics. All data collection is solely for providing Aer's core features. Your data is never sold to third parties for marketing purposes, and we do not create advertising profiles based on your activity.
+          </p>
+
           <h2>3. Data Storage and Security</h2>
           <p>
             Your data is stored securely using industry-standard encryption. We use Convex as our database provider, which implements enterprise-grade security measures including:
@@ -56,6 +61,11 @@ export default function Privacy() {
             <li>Regular security audits</li>
             <li>Access controls and authentication</li>
           </ul>
+
+          <h2>3a. End-to-End Encryption</h2>
+          <p>
+            Certain user data (web captures, notes) is encrypted client-side before upload. Only encrypted data is sent to our servers and cannot be read by us. Encryption keys are stored locally on your device and never transmitted to our servers. This means only you can access the full plaintext content of your encrypted data.
+          </p>
 
           <h2>4. Data Sharing</h2>
           <p>
