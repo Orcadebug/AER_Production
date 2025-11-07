@@ -33,6 +33,19 @@ export const create = mutation({
     const user = await getCurrentUser(ctx);
     if (!user) throw new Error("Unauthorized");
 
+    // Rate-limit uploads per user per minute based on tier
+    try {
+      const rl = await ctx.runMutation(internal.entitlements.assertAndIncrementRateLimit, {
+        userId: user._id,
+        key: "upload",
+      });
+      if (!rl.ok) {
+        throw new Error(`Rate limit exceeded: ${rl.used}/${rl.limit}. Try again in ${Math.ceil((rl.retryAfterMs || 0)/1000)}s or upgrade your plan.`);
+      }
+    } catch (e) {
+      throw e;
+    }
+
     // Enforce encrypted input only
     const encContent = args.encryptedContent;
     if (!encContent?.ciphertext || !encContent?.nonce) {
@@ -41,6 +54,22 @@ export const create = mutation({
 
     const encTitle = args.encryptedTitle;
     const encSummary = args.encryptedSummary;
+
+    // Enforce storage quota before inserting
+    const approxBytes =
+      (encContent?.ciphertext?.length || 0) +
+      (encTitle?.ciphertext?.length || 0) +
+      (encSummary?.ciphertext?.length || 0) +
+      (args.encryptedMetadata?.ciphertext?.length || 0);
+    const storage = await ctx.runQuery(internal.entitlements.assertStorageAllowed, {
+      userId: user._id,
+      additionalBytes: approxBytes,
+    });
+    if (!storage.ok) {
+      throw new Error(
+        `Storage limit reached (${Math.round(storage.used/1024/1024)}MB of ${storage.allowed === Number.MAX_SAFE_INTEGER ? '∞' : Math.round(storage.allowed/1024/1024)+'MB'}). Delete items or upgrade your plan.`
+      );
+    }
 
     // Compute a plaintext title for indexing/search (no secrets)
     const computedTitle = (() => {
@@ -257,11 +286,28 @@ export const remove = mutation({
   },
 });
 
-export const generateUploadUrl = mutation({
+export const generateUploadUrl = action({
   args: {},
   handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
+    const user = await ctx.runQuery(internal.users.getCurrentUserInternal, {} as any);
     if (!user) throw new Error("Unauthorized");
+
+    // Prevent creating upload URLs when storage is already at or above quota
+    const status = await ctx.runQuery(internal.entitlements.getStorageStatus, { userId: user._id });
+    if (status.allowed !== Number.MAX_SAFE_INTEGER && status.used >= status.allowed) {
+      throw new Error(
+        `Storage limit reached (${Math.round(status.used/1024/1024)}MB). Delete items or upgrade your plan.`
+      );
+    }
+
+    // Rate-limit upload URL generation as part of API usage
+    const rl = await ctx.runMutation(internal.entitlements.assertAndIncrementRateLimit, {
+      userId: user._id,
+      key: "api",
+    });
+    if (!rl.ok) {
+      throw new Error(`Rate limit exceeded. Try again in ${Math.ceil((rl.retryAfterMs||0)/1000)}s.`);
+    }
 
     return await ctx.storage.generateUploadUrl();
   },

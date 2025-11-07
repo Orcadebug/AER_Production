@@ -40,6 +40,12 @@ export const uploadContext = httpAction(async (ctx, request) => {
 
     const body = await request.json();
 
+    // Rate limit per user for uploads
+    const rl = await ctx.runMutation(internal.entitlements.assertAndIncrementRateLimit, { userId, key: "upload" });
+    if (!rl.ok) {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded", details: rl, suggestUpgrade: true }), { status: 429, headers: { "Content-Type": "application/json" } });
+    }
+
     // Accept either encrypted or plaintext payloads; optionally summary-only
     let { encryptedContent, encryptedTitle, encryptedMetadata, encryptedSummary, tags, content, plaintext, summaryOnly, title } = body || {};
 
@@ -64,6 +70,16 @@ export const uploadContext = httpAction(async (ctx, request) => {
         summary = text.substring(0, 500);
       }
       const encSummary = serverEncryptString(summary);
+
+      // Enforce storage quota before creating (summary stored as content+summary)
+      const approxBytes = (encSummary?.ciphertext?.length || 0) * 2 + (encryptedTitle?.ciphertext?.length || 0) + (encryptedMetadata?.ciphertext?.length || 0);
+      const storage = await ctx.runQuery(internal.entitlements.assertStorageAllowed, { userId, additionalBytes: approxBytes });
+      if (!storage.ok) {
+        return new Response(
+          JSON.stringify({ error: "Storage limit exceeded", details: storage, suggestUpgrade: true }),
+          { status: 402, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
       // Optionally generate tags from summary
       let computedTags: string[] | undefined = undefined;
@@ -113,6 +129,20 @@ export const uploadContext = httpAction(async (ctx, request) => {
         });
       }
       encryptedContent = serverEncryptString(text);
+    }
+
+    // Enforce storage quota before creating
+    const approxBytes =
+      (encryptedContent?.ciphertext?.length || 0) +
+      (encryptedTitle?.ciphertext?.length || 0) +
+      (encryptedSummary?.ciphertext?.length || 0) +
+      (encryptedMetadata?.ciphertext?.length || 0);
+    const storage = await ctx.runQuery(internal.entitlements.assertStorageAllowed, { userId, additionalBytes: approxBytes });
+    if (!storage.ok) {
+      return new Response(
+        JSON.stringify({ error: "Storage limit exceeded", details: storage, suggestUpgrade: true }),
+        { status: 402, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     // Create context via internal mutation bound to userId
@@ -186,6 +216,12 @@ export const batchUploadContexts = httpAction(async (ctx, request) => {
     const body = await request.json();
     const { contexts } = body;
 
+    // Rate limit per user for batch uploads
+    const rl = await ctx.runMutation(internal.entitlements.assertAndIncrementRateLimit, { userId, key: "upload" });
+    if (!rl.ok) {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded", details: rl, suggestUpgrade: true }), { status: 429, headers: { "Content-Type": "application/json" } });
+    }
+
     if (!Array.isArray(contexts)) {
       return new Response(
         JSON.stringify({ error: "Invalid request format" }),
@@ -214,6 +250,17 @@ export const batchUploadContexts = httpAction(async (ctx, request) => {
             throw new Error("Missing content for item: provide 'content' or 'encryptedContent'");
           }
           encryptedContent = serverEncryptString(text);
+        }
+
+        // Enforce storage quota per item
+        const approxBytes =
+          (encryptedContent?.ciphertext?.length || 0) +
+          (encryptedTitle?.ciphertext?.length || 0) +
+          (encryptedSummary?.ciphertext?.length || 0) +
+          (encryptedMetadata?.ciphertext?.length || 0);
+        const storage = await ctx.runQuery(internal.entitlements.assertStorageAllowed, { userId, additionalBytes: approxBytes });
+        if (!storage.ok) {
+          throw new Error(`Storage limit exceeded (${Math.round(storage.used/1024/1024)}MB/${storage.allowed===Number.MAX_SAFE_INTEGER ? '∞' : Math.round(storage.allowed/1024/1024)+'MB'})`);
         }
 
         const contextId = await ctx.runMutation(internal.contextsInternal.createForUser, {
@@ -280,6 +327,12 @@ export const searchContexts = httpAction(async (ctx, request) => {
 
     const { query, limit } = await request.json().catch(() => ({ query: "", limit: 5 }));
     const effectiveLimit = Math.min(Math.max(Number(limit) || 5, 1), 10);
+
+    // Rate limit searches per minute based on tier
+    const rl = await ctx.runMutation(internal.entitlements.assertAndIncrementRateLimit, { userId, key: "search" });
+    if (!rl.ok) {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded", details: rl, suggestUpgrade: true }), { status: 429, headers: { "Content-Type": "application/json" } });
+    }
 
     // Get all contexts once
     const allContexts: any[] = await ctx.runQuery(internal.contextsInternal.getAllContextsForUser, { userId });

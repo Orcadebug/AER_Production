@@ -127,10 +127,15 @@ export const generateAndUpdateTags = internalAction({
   },
   handler: async (ctx, args) => {
     try {
-      // Enforce usage limits
+      // Enforce usage limits (monthly)
       const allowed = await ctx.runQuery(internal.entitlements.assertPerplexityAllowed, { userId: args.userId });
       if (!allowed.ok) {
         throw new Error(`Perplexity usage exceeded ${allowed.used}/${allowed.allowed}`);
+      }
+      // Per-minute rate limiting for AI usage
+      const rl = await ctx.runMutation(internal.entitlements.assertAndIncrementRateLimit, { userId: args.userId, key: "ai" });
+      if (!rl.ok) {
+        throw new Error(`AI rate limit exceeded. Try again in ${Math.ceil((rl.retryAfterMs||0)/1000)}s or upgrade your plan.`);
       }
 
       const tags = await ctx.runAction(internal.ai.generateTags, {
@@ -179,6 +184,8 @@ export const generateAndUpdateEncryptedSummary = internalAction({
     try {
       const allowed = await ctx.runQuery(internal.entitlements.assertPerplexityAllowed, { userId: args.userId });
       if (!allowed.ok) throw new Error("AI not allowed");
+      const rl = await ctx.runMutation(internal.entitlements.assertAndIncrementRateLimit, { userId: args.userId, key: "ai" });
+      if (!rl.ok) throw new Error(`AI rate limit exceeded. Try again in ${Math.ceil((rl.retryAfterMs||0)/1000)}s or upgrade your plan.`);
       const summary = await ctx.runAction(internal.ai.generateSummary, {
         content: args.content,
         title: "",

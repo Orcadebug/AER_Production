@@ -63,7 +63,7 @@ export default function Dashboard() {
   const updateContext = useMutation(api.contexts.update);
   const createTag = useMutation(api.tags.create);
   const deleteContext = useMutation(api.contexts.remove);
-  const generateUploadUrl = useMutation(api.contexts.generateUploadUrl);
+  const generateUploadUrl = useAction(api.contexts.generateUploadUrl);
 
   // AI-powered search effect
   useEffect(() => {
