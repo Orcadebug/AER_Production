@@ -116,6 +116,21 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         setResetEligibleEmail(null);
       } else {
         // Fallback for other sign-in errors
+        // Some Convex Auth versions can throw a TypeError (e.g. reading '_id' of null)
+        // when the account doesn't exist. In that case, try sign up once.
+        if (/Cannot\s+read\s+properties\s+of\s+null|Server Error/i.test(errorMessage)) {
+          try {
+            const fd = new FormData();
+            fd.set("email", lastEmail);
+            fd.set("password", lastPassword);
+            fd.set("flow", "signUp");
+            await signIn("password", fd);
+            return; // success path handled by effect
+          } catch (e) {
+            // fall through to standard error handling below
+          }
+        }
+
         setError("Invalid email or password. Please try again.");
         try {
           if (lastEmail) {
