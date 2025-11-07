@@ -37,26 +37,29 @@ chrome.runtime.onInstalled.addListener(() => {
     }
   });
   
-  // Create context menus
-  chrome.contextMenus.create({
-    id: 'uploadToAer',
-    title: 'Upload to Aer',
-    contexts: ['selection', 'page', 'link', 'image']
-  });
-  chrome.contextMenus.create({
-    id: 'uploadFullToAer',
-    title: 'Upload Full Page to Aer',
-    contexts: ['selection', 'page']
-  });
-  chrome.contextMenus.create({
-    id: 'uploadSummaryToAer',
-    title: 'Upload AI Summary to Aer',
-    contexts: ['selection', 'page']
-  });
-  chrome.contextMenus.create({
-    id: 'findFromAer',
-    title: 'Find relevant info from Aer',
-    contexts: ['editable', 'selection']
+  // Remove all context menus first to avoid duplicate ID errors
+  chrome.contextMenus.removeAll(() => {
+    // Create context menus
+    chrome.contextMenus.create({
+      id: 'uploadToAer',
+      title: 'Upload to Aer',
+      contexts: ['selection', 'page', 'link', 'image']
+    });
+    chrome.contextMenus.create({
+      id: 'uploadFullToAer',
+      title: 'Upload Full Page to Aer',
+      contexts: ['selection', 'page']
+    });
+    chrome.contextMenus.create({
+      id: 'uploadSummaryToAer',
+      title: 'Upload AI Summary to Aer',
+      contexts: ['selection', 'page']
+    });
+    chrome.contextMenus.create({
+      id: 'findFromAer',
+      title: 'Find relevant info from Aer',
+      contexts: ['editable', 'selection']
+    });
   });
 });
 
