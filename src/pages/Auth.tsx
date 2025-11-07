@@ -95,16 +95,28 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         }
       }
 
-      // Check if the error indicates the user doesn't exist
+      // Check error type
       if (!isSignUp && errorMessage.includes("InvalidSecret")) {
+        // InvalidSecret = wrong password for existing account
+        setError("Invalid email or password. Please try again.");
+        try {
+          if (lastEmail) {
+            const exists = await convex.query(api.users.emailExists, { email: lastEmail });
+            setResetEligibleEmail(exists ? lastEmail : null);
+          }
+        } catch {
+          setResetEligibleEmail(null);
+        }
+      } else if (!isSignUp && errorMessage.includes("InvalidAccountId")) {
+        // InvalidAccountId = account not found
         setError("No account found with this email. Please sign up first.");
         setResetEligibleEmail(null);
       } else if (isSignUp) {
         setError("Failed to create account. Please try again.");
         setResetEligibleEmail(null);
       } else {
+        // Fallback for other sign-in errors
         setError("Invalid email or password. Please try again.");
-        // Only after wrong password attempt: check if email exists, then enable reset link
         try {
           if (lastEmail) {
             const exists = await convex.query(api.users.emailExists, { email: lastEmail });

@@ -31,6 +31,7 @@ import type * as mcp_server from "../mcp/server.js";
 import type * as oauth from "../oauth.js";
 import type * as oauthInternal from "../oauthInternal.js";
 import type * as oauthPublic from "../oauthPublic.js";
+import type * as passwordReset from "../passwordReset.js";
 import type * as payApi from "../payApi.js";
 import type * as payments from "../payments.js";
 import type * as paymentsInternal from "../paymentsInternal.js";
@@ -68,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   oauth: typeof oauth;
   oauthInternal: typeof oauthInternal;
   oauthPublic: typeof oauthPublic;
+  passwordReset: typeof passwordReset;
   payApi: typeof payApi;
   payments: typeof payments;
   paymentsInternal: typeof paymentsInternal;

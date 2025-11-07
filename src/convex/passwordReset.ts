@@ -1,1 +1,64 @@
-import { mutation, query } from \"./_generated/server\";\nimport { v } from \"convex/values\";\nimport { getCurrentUser } from \"./users\";\nimport crypto from \"crypto\";\n\n// Store temporary password reset tokens (should be cleaned up periodically)\n// In production, use a TTL system (e.g., tokens expire after 1 hour)\nexport const requestPasswordReset = mutation({\n  args: {\n    email: v.string(),\n  },\n  handler: async (ctx, { email }) => {\n    const normalizedEmail = email.toLowerCase().trim();\n\n    // Find user by email\n    const user = await ctx.db\n      .query(\"users\")\n      .withIndex(\"email\", (q) => q.eq(\"email\", normalizedEmail))\n      .first();\n\n    if (!user) {\n      // Don't reveal if email exists (security best practice)\n      return { success: true, message: \"If email exists, reset link sent\" };\n    }\n\n    // Generate secure random token (32 bytes = 256 bits)\n    const token = crypto.randomBytes(32).toString(\"hex\");\n    const tokenHash = crypto.createHash(\"sha256\").update(token).digest(\"hex\");\n    const expiresAt = Date.now() + 3600000; // 1 hour\n\n    // Store hashed token (never store plain tokens)\n    await ctx.db.insert(\"password_reset_tokens\", {\n      userId: user._id,\n      tokenHash,\n      email: normalizedEmail,\n      expiresAt,\n      used: false,\n    });\n\n    // Send email via Resend\n    const resendApiKey = process.env.RESEND_API_KEY;\n    if (!resendApiKey) {\n      throw new Error(\"RESEND_API_KEY not configured\");\n    }\n\n    const resetUrl = `${process.env.SITE_URL}/password-reset?token=${token}`;\n    const emailResponse = await fetch(\"https://api.resend.com/emails\", {\n      method: \"POST\",\n      headers: {\n        Authorization: `Bearer ${resendApiKey}`,\n        \"Content-Type\": \"application/json\",\n      },\n      body: JSON.stringify({\n        from: \"noreply@aer.app\",\n        to: normalizedEmail,\n        subject: \"Reset your Aer password\",\n        html: `\n          <h2>Password Reset Request</h2>\n          <p>Click the link below to reset your password:</p>\n          <a href=\"${resetUrl}\" style=\"color: #0066cc; text-decoration: none;\">\n            Reset Password\n          </a>\n          <p style=\"color: #666; font-size: 12px;\">\n            Link expires in 1 hour. If you didn't request this, ignore this email.\n          </p>\n        `,\n      }),\n    });\n\n    if (!emailResponse.ok) {\n      console.error(\"Resend API error:\", await emailResponse.text());\n      throw new Error(\"Failed to send reset email\");\n    }\n\n    return { success: true, message: \"Password reset link sent to email\" };\n  },\n});\n\nexport const verifyPasswordResetToken = query({\n  args: {\n    token: v.string(),\n  },\n  handler: async (ctx, { token }) => {\n    const tokenHash = crypto.createHash(\"sha256\").update(token).digest(\"hex\");\n\n    const tokenRecord = await ctx.db\n      .query(\"password_reset_tokens\")\n      .filter((q) => q.eq(q.field(\"tokenHash\"), tokenHash))\n      .first();\n\n    if (!tokenRecord || tokenRecord.used || tokenRecord.expiresAt < Date.now()) {\n      return { valid: false, message: \"Invalid or expired token\" };\n    }\n\n    const user = await ctx.db.get(tokenRecord.userId);\n    return {\n      valid: true,\n      email: tokenRecord.email,\n      userId: tokenRecord.userId,\n      userName: user?.name || user?.email || \"User\",\n    };\n  },\n});\n\nexport const resetPassword = mutation({\n  args: {\n    token: v.string(),\n    newPassword: v.string(),\n  },\n  handler: async (ctx, { token, newPassword }) => {\n    // Validate password strength\n    if (newPassword.length < 8) {\n      throw new Error(\"Password must be at least 8 characters\");\n    }\n\n    const tokenHash = crypto.createHash(\"sha256\").update(token).digest(\"hex\");\n\n    const tokenRecord = await ctx.db\n      .query(\"password_reset_tokens\")\n      .filter((q) => q.eq(q.field(\"tokenHash\"), tokenHash))\n      .first();\n\n    if (!tokenRecord || tokenRecord.used || tokenRecord.expiresAt < Date.now()) {\n      throw new Error(\"Invalid or expired reset token\");\n    }\n\n    // Mark token as used\n    await ctx.db.patch(tokenRecord._id, { used: true });\n\n    // Hash new password\n    const hashedPassword = crypto\n      .createHash(\"sha256\")\n      .update(newPassword)\n      .digest(\"hex\");\n\n    // Update user's password in auth table\n    // Note: In Convex Auth, passwords are stored in the `authSessions` table\n    // We need to update the credential directly\n    const user = await ctx.db.get(tokenRecord.userId);\n    if (!user) {\n      throw new Error(\"User not found\");\n    }\n\n    // Find the password credential for this user\n    const credentials = await ctx.db\n      .query(\"authCredentials\")\n      .filter(\n        (q) =>\n          q.eq(q.field(\"userId\"), tokenRecord.userId) &&\n          q.eq(q.field(\"providerName\"), \"password\")\n      )\n      .first();\n\n    if (credentials) {\n      // Update existing password credential\n      await ctx.db.patch(credentials._id, {\n        providerAccountId: hashedPassword,\n      });\n    } else {\n      // Create new password credential if it doesn't exist\n      // (user may have signed up via OAuth and now setting a password)\n      await ctx.db.insert(\"authCredentials\", {\n        userId: tokenRecord.userId,\n        providerName: \"password\",\n        providerAccountId: hashedPassword,\n      });\n    }\n\n    // Log password reset in audit log\n    await ctx.db.insert(\"audit_logs\", {\n      timestamp: Date.now(),\n      userId: tokenRecord.userId,\n      action: \"PASSWORD_RESET\",\n      resource: \"users\",\n      resourceId: tokenRecord.userId,\n      result: \"SUCCESS\",\n      metadata: { email: tokenRecord.email },\n    });\n\n    return { success: true, message: \"Password reset successful\" };\n  },\n});\n\nexport const changePassword = mutation({\n  args: {\n    currentPassword: v.string(),\n    newPassword: v.string(),\n  },\n  handler: async (ctx, { currentPassword, newPassword }) => {\n    const user = await getCurrentUser(ctx);\n    if (!user) {\n      throw new Error(\"Not authenticated\");\n    }\n\n    // Validate new password strength\n    if (newPassword.length < 8) {\n      throw new Error(\"Password must be at least 8 characters\");\n    }\n\n    // Find current password credential\n    const credentials = await ctx.db\n      .query(\"authCredentials\")\n      .filter(\n        (q) =>\n          q.eq(q.field(\"userId\"), user._id) &&\n          q.eq(q.field(\"providerName\"), \"password\")\n      )\n      .first();\n\n    if (!credentials) {\n      throw new Error(\"Password not set. Use password reset instead\");\n    }\n\n    // Verify current password\n    const currentHash = crypto\n      .createHash(\"sha256\")\n      .update(currentPassword)\n      .digest(\"hex\");\n    if (currentHash !== credentials.providerAccountId) {\n      throw new Error(\"Current password is incorrect\");\n    }\n\n    // Hash new password\n    const newHash = crypto\n      .createHash(\"sha256\")\n      .update(newPassword)\n      .digest(\"hex\");\n\n    // Update password\n    await ctx.db.patch(credentials._id, {\n      providerAccountId: newHash,\n    });\n\n    // Log password change\n    await ctx.db.insert(\"audit_logs\", {\n      timestamp: Date.now(),\n      userId: user._id,\n      action: \"PASSWORD_CHANGED\",\n      resource: \"users\",\n      resourceId: user._id,\n      result: \"SUCCESS\",\n    });\n\n    return { success: true, message: \"Password changed successfully\" };\n  },\n});\n"
+import { mutation, query } from "./_generated/server";
+import { v } from "convex/values";
+import crypto from "crypto";
+
+// Validate password reset token
+export const verifyPasswordResetToken = query({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, { token }) => {
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    const tokenRecord = await ctx.db
+      .query("password_reset_tokens")
+      .filter((q) => q.eq(q.field("tokenHash"), tokenHash))
+      .first();
+
+    if (!tokenRecord || tokenRecord.used || tokenRecord.expiresAt < Date.now()) {
+      return { valid: false, message: "Invalid or expired token" };
+    }
+
+    const user = await ctx.db.get(tokenRecord.userId);
+    return {
+      valid: true,
+      email: tokenRecord.email,
+      userId: tokenRecord.userId,
+      userName: user?.name || user?.email || "User",
+    };
+  },
+});
+
+// Mark password reset token as used after successful password reset via auth
+export const markPasswordResetTokenUsed = mutation({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, { token }) => {
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    const tokenRecord = await ctx.db
+      .query("password_reset_tokens")
+      .filter((q) => q.eq(q.field("tokenHash"), tokenHash))
+      .first();
+
+    if (!tokenRecord) {
+      throw new Error("Token not found");
+    }
+
+    await ctx.db.patch(tokenRecord._id, { used: true });
+
+    // Log audit event
+    await ctx.db.insert("audit_logs", {
+      timestamp: Date.now(),
+      userId: tokenRecord.userId,
+      action: "PASSWORD_RESET_COMPLETED",
+      resource: "users",
+      resourceId: tokenRecord.userId as any,
+      result: "SUCCESS",
+      metadata: { email: tokenRecord.email },
+    });
+
+    return { success: true };
+  },
+});
