@@ -9,7 +9,7 @@ if [ -z "$1" ]; then
 fi
 
 TOKEN="$1"
-BASE_URL="https://brilliant-caribou-800.convex.site"
+BASE_URL="https://honorable-porpoise-222.convex.site"
 
 echo "Testing MCP endpoint with token: $TOKEN"
 echo ""

@@ -214,7 +214,7 @@ export default function Settings() {
                       onClick={async () => {
                         // Create a checkout session for Pro
                         try {
-                          const cloud = (import.meta.env.VITE_CONVEX_URL as string) || "https://brilliant-caribou-800.convex.cloud";
+                          const cloud = (import.meta.env.VITE_CONVEX_URL as string) || "https://honorable-porpoise-222.convex.cloud";
                           const site = (import.meta.env.VITE_CONVEX_SITE_URL as string) || cloud.replace("convex.cloud", "convex.site");
                           const endpoint = `${site}/api/pay/checkout`;
                           console.log("Checkout POST ->", endpoint);

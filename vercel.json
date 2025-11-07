@@ -5,7 +5,7 @@
   "installCommand": "pnpm install",
   "devCommand": "pnpm dev",
   "env": {
-    "VITE_CONVEX_URL": "https://brilliant-caribou-800.convex.cloud"
+    "VITE_CONVEX_URL": "https://honorable-porpoise-222.convex.cloud"
   },
   "rewrites": [
     {

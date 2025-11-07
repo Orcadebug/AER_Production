@@ -25,11 +25,11 @@ export default defineConfig({
       // Content Security Policy
       "Content-Security-Policy": [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://brilliant-caribou-800.convex.site https://brilliant-caribou-800.convex.cloud",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://honorable-porpoise-222.convex.site https://honorable-porpoise-222.convex.cloud",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: https: blob:",
         "font-src 'self' data: https://r2cdn.perplexity.ai",
-        "connect-src 'self' https://brilliant-caribou-800.convex.site https://brilliant-caribou-800.convex.cloud wss://brilliant-caribou-800.convex.cloud",
+        "connect-src 'self' https://honorable-porpoise-222.convex.site https://honorable-porpoise-222.convex.cloud wss://honorable-porpoise-222.convex.cloud",
         "frame-ancestors 'none'",
         "base-uri 'self'",
         "form-action 'self'",

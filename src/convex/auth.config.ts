@@ -1,7 +1,7 @@
 export default {
   providers: [
     {
-      domain: "https://brilliant-caribou-800.convex.site",
+      domain: "https://honorable-porpoise-222.convex.site",
       applicationID: "convex",
     },
   ],

@@ -1,11 +1,11 @@
 /**
  * Aer Chrome Extension - Auth Page Script
  * - Loads/saves API URL and auth token
- * - Defaults API URL to https://brilliant-caribou-800.convex.site
+ * - Defaults API URL to https://honorable-porpoise-222.convex.site
  * - Saves to chrome.storage.local using keys: apiUrl, authToken
  */
 
-const DEFAULT_API_URL = 'https://brilliant-caribou-800.convex.site';
+const DEFAULT_API_URL = 'https://honorable-porpoise-222.convex.site';
 
 // Helpers to load from storage with backward compatibility
 async function getApiUrl() {

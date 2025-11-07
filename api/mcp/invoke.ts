@@ -51,7 +51,7 @@ export default async function handler(req: Request) {
     });
   }
 
-  const convexBase = (process.env.VITE_CONVEX_SITE_URL || 'https://brilliant-caribou-800.convex.site');
+  const convexBase = (process.env.VITE_CONVEX_SITE_URL || 'https://honorable-porpoise-222.convex.site');
 
   // Pass through to Convex MCP router (handles OAuth token and tools)
   try {

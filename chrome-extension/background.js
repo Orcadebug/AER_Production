@@ -4,7 +4,7 @@
 // ============================================
 // CONFIGURATION - UPDATE THESE VALUES
 // ============================================
-const DEFAULT_API_BASE = 'https://brilliant-caribou-800.convex.site';
+const DEFAULT_API_BASE = 'https://honorable-porpoise-222.convex.site';
 const AER_API_ENDPOINT = `${DEFAULT_API_BASE}/api/context/upload`;
 const API_TOKEN = ''; // Will be loaded from storage
 

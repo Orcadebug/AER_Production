@@ -34,7 +34,7 @@ export default async function handler(req) {
     start(controller) {
       const encoder = new TextEncoder();
       const site = process.env.SITE_URL || 'https://www.aercarbon.com';
-      const convexBase = (process.env.VITE_CONVEX_SITE_URL || 'https://brilliant-caribou-800.convex.site');
+      const convexBase = (process.env.VITE_CONVEX_SITE_URL || 'https://honorable-porpoise-222.convex.site');
       const auth = {
         type: 'oauth',
         client_name: client,

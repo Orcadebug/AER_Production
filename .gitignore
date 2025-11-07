@@ -31,3 +31,9 @@ mcp-config.json
 # Desktop app build artifacts
 apps/aer-capture-desktop/release/
 apps/aer-capture-desktop/dist/
+
+# Local secrets
+secrets/
+
+# Do not commit environment files with secrets
+.env.production

@@ -69,7 +69,7 @@ export default function App() {
           <span>Convex site:</span>
           <input
             className="border rounded px-2 py-1"
-            placeholder="https://brilliant-caribou-800.convex.site"
+            placeholder="https://honorable-porpoise-222.convex.site"
             value={cfg.convexSite || ''}
             onChange={(e) => setCfg({ ...cfg, convexSite: e.target.value })}
           />

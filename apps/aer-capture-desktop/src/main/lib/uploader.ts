@@ -7,7 +7,7 @@ export type AerConfig = {
 }
 
 export async function sendToAer(payload: { title: string; plaintext: string; metadata?: any }, cfg: AerConfig) {
-  const site = cfg.convexSite || process.env.VITE_CONVEX_SITE_URL || 'https://brilliant-caribou-800.convex.site'
+  const site = cfg.convexSite || process.env.VITE_CONVEX_SITE_URL || 'https://honorable-porpoise-222.convex.site'
   const url = `${site}/api/context/upload`
   try {
     const res = await axios.post(

@@ -8,7 +8,7 @@ export default async function handler() {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
   }
-  const convexBase = (process.env.VITE_CONVEX_SITE_URL || 'https://brilliant-caribou-800.convex.site');
+  const convexBase = (process.env.VITE_CONVEX_SITE_URL || 'https://honorable-porpoise-222.convex.site');
   return new Response(
     JSON.stringify({
       name: 'Aer MCP',
