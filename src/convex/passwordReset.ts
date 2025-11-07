@@ -1,6 +1,13 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import crypto from "crypto";
+
+// Web Crypto helper to compute SHA-256 hex digest in the default Convex runtime
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  const bytes = new Uint8Array(digest);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
 
 // Validate password reset token
 export const verifyPasswordResetToken = query({
@@ -8,7 +15,7 @@ export const verifyPasswordResetToken = query({
     token: v.string(),
   },
   handler: async (ctx, { token }) => {
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const tokenHash = await sha256Hex(token);
 
     const tokenRecord = await ctx.db
       .query("password_reset_tokens")
@@ -35,7 +42,7 @@ export const markPasswordResetTokenUsed = mutation({
     token: v.string(),
   },
   handler: async (ctx, { token }) => {
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const tokenHash = await sha256Hex(token);
 
     const tokenRecord = await ctx.db
       .query("password_reset_tokens")
