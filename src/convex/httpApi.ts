@@ -3,6 +3,44 @@ import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { serverEncryptString, serverDecryptString } from "./crypto";
 
+function detectSourceTagFromUrl(urlRaw: string | null | undefined): string | null {
+  if (!urlRaw) return null;
+  let u = urlRaw.trim();
+  try {
+    const url = new URL(u);
+    const host = url.hostname.toLowerCase();
+    const full = (url.hostname + url.pathname).toLowerCase();
+    if (host.includes("gemini.google.com") || full.includes("ai.google.com") || full.includes("/gemini")) return "source:gemini";
+    if (host.includes("claude.ai")) return "source:claude";
+    if (host.includes("chatgpt.com") || host.includes("openai.com")) return "source:chatgpt";
+    if (host.includes("perplexity.ai")) return "source:perplexity";
+    if (host.includes("copilot.microsoft.com")) return "source:copilot";
+    if (host.includes("github.com")) return "source:github";
+    if (host.includes("nbcnews.com")) return "source:nbc";
+    if (host.includes("foxnews.com") || host === "fox.com") return "source:fox";
+    if (host.includes("cnn.com")) return "source:cnn";
+    if (host.includes("bbc.co.uk") || host.includes("bbc.com")) return "source:bbc";
+    if (host.includes("nytimes.com")) return "source:nytimes";
+    if (host.includes("reuters.com")) return "source:reuters";
+  } catch {}
+  return null;
+}
+
+function extractUrlFromText(text: string | null | undefined): string | null {
+  if (!text) return null;
+  const m1 = text.match(/^URL:\s*(https?:\/\/\S+)/mi);
+  if (m1 && m1[1]) return m1[1];
+  const m2 = text.match(/https?:\/\/\S+/);
+  if (m2 && m2[0]) return m2[0];
+  return null;
+}
+
+function mergeTags(existing: string[] | undefined, add: string | null): string[] | undefined {
+  const base = Array.isArray(existing) ? existing.slice() : [];
+  if (add && !base.includes(add)) base.unshift(add);
+  return base.length > 0 ? base : undefined;
+}
+
 /**
  * HTTP API endpoint for uploading encrypted context
  * POST /api/context/upload
@@ -93,6 +131,16 @@ export const uploadContext = httpAction(async (ctx, request) => {
         });
       } catch {}
 
+      // Always include a source:* tag if we can detect one from URL
+      try {
+        const urlInBody = (body as any)?.url as string | undefined;
+        const fromTextUrl = extractUrlFromText(text);
+        const srcTag = detectSourceTagFromUrl(urlInBody || fromTextUrl);
+        if (srcTag) {
+          computedTags = mergeTags(computedTags || tags, srcTag);
+        }
+      } catch {}
+
       const contextId = await ctx.runMutation(internal.contextsInternal.createForUser, {
         userId,
         encryptedContent: encSummary,
@@ -153,6 +201,17 @@ export const uploadContext = httpAction(async (ctx, request) => {
         encryptedSummary = { ciphertext: preview, nonce: 'plain' } as any;
       }
     }
+
+    // Ensure a source:* tag when possible for all uploads
+    try {
+      const urlInBody = (body as any)?.url as string | undefined;
+      const textForUrl = (typeof plaintext === 'string' && plaintext) || (typeof content === 'string' && content) || '';
+      const fromTextUrl = extractUrlFromText(textForUrl);
+      const srcTag = detectSourceTagFromUrl(urlInBody || fromTextUrl);
+      if (srcTag) {
+        tags = mergeTags(tags, srcTag);
+      }
+    } catch {}
 
     // Create context via internal mutation bound to userId
     const contextId = await ctx.runMutation(internal.contextsInternal.createForUser, {
