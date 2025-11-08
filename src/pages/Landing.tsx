@@ -69,7 +69,7 @@ export default function Landing() {
               Start Free
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button size="lg" variant="outline" className="text-lg px-8">
+            <Button size="lg" variant="outline" className="text-lg px-8" onClick={() => navigate("/downloads")}>
               See Platforms
             </Button>
           </div>
@@ -523,7 +523,7 @@ export default function Landing() {
               Start Free Now
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button size="lg" variant="outline" className="text-lg px-8">
+            <Button size="lg" variant="outline" className="text-lg px-8" onClick={() => navigate("/downloads")}>
               Download All Platforms
             </Button>
           </div>
