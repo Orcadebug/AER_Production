@@ -338,6 +338,90 @@ async function ensureAssistScripts(tabId, url) {
 }
 
 // ============================================
+// AI-assisted relevance filtering (client + server tags)
+// ============================================
+async function getTagsForText(text, title, authToken, apiBase) {
+  try {
+    const body = { content: (text || '').toString().slice(0, 6000), title: title || '', totalContexts: 1 };
+    const res = await fetch(`${apiBase}/api/tags`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return [];
+    const data = await res.json().catch(() => ({}));
+    return Array.isArray(data) ? data : (Array.isArray(data.tags) ? data.tags : []);
+  } catch { return []; }
+}
+
+function tokenize(s) {
+  return (s || '').toLowerCase().split(/[^a-z0-9]+/g).filter(w => w && w.length > 2);
+}
+
+function topTokens(s, max=30) {
+  const stop = new Set(["the","and","for","that","with","this","you","are","was","from","have","has","not","but","all","any","can","your","our","use","using","will","into","about","over","under","more","less","than","then","when","what","why","how","they","them","their","there","here","who","which","also","like","just","into","onto","out","in","on","to","of","a","an","as","is","it","be","or","if","at","by","we","i"]);
+  const tokens = tokenize(s).filter(w => !stop.has(w));
+  const freq = new Map();
+  for (const w of tokens) freq.set(w, (freq.get(w)||0) + 1);
+  return Array.from(freq.entries()).sort((a,b)=>b[1]-a[1]).slice(0, max).map(([w])=>w);
+}
+
+function filterByFirstHalf(text, tags, title) {
+  const raw = (text || '').toString();
+  if (!raw.trim()) return raw;
+  // Split into blocks by blank lines; keep first half as anchor
+  const blocks = raw.split(/\n\s*\n+/g).map(b => b.trim()).filter(Boolean);
+  const totalChars = raw.length;
+  let target = Math.max(1, Math.floor(blocks.length/2));
+  let acc = 0, firstIdx = blocks.length; // compute cut by characters
+  for (let i=0;i<blocks.length;i++) { acc += blocks[i].length; if (acc >= totalChars/2) { firstIdx = i+1; break; } }
+  const keepAnchor = new Set();
+  for (let i=0;i<firstIdx;i++) keepAnchor.add(i);
+  const firstHalfText = blocks.slice(0, firstIdx).join('\n\n');
+  const keyTokens = new Set(topTokens(firstHalfText, 40));
+  const tagSet = new Set((tags||[]).map(t=>t.toLowerCase()));
+
+  function scoreBlock(b) {
+    const toks = tokenize(b);
+    let score = 0;
+    for (const t of toks) if (keyTokens.has(t)) score += 2;
+    for (const t of tagSet) if (t && b.toLowerCase().includes(t)) score += 5;
+    // down-weight likely side-rail items: very short lines, menu-like
+    const lines = b.split(/\n/).filter(Boolean);
+    const shortLines = lines.filter(l => tokenize(l).length <= 5).length;
+    if (shortLines >= Math.max(1, Math.floor(lines.length*0.6))) score -= 6;
+    if (/^new chat$/i.test(b) || /history/i.test(b) || /extensions/i.test(b) || /apps/i.test(b) || /explore/i.test(b) || /settings/i.test(b)) score -= 8;
+    // mild boost if block contains conversation role markers
+    if (/^(user|assistant|model)[:\-]/im.test(b)) score += 2;
+    return score;
+  }
+
+  const filtered = [];
+  for (let i=0;i<blocks.length;i++) {
+    if (keepAnchor.has(i)) { filtered.push(blocks[i]); continue; }
+    const sc = scoreBlock(blocks[i]);
+    if (sc >= 4) filtered.push(blocks[i]);
+  }
+
+  // Deduplicate consecutive identical blocks
+  const deduped = filtered.filter((b,i,arr)=> i===0 || b !== arr[i-1]);
+  return deduped.join('\n\n');
+}
+
+async function aiFilterContentUsingFirstHalf(original, title, authToken, apiBase) {
+  try {
+    const raw = (original || '').toString();
+    if (!raw.trim()) return raw;
+    const halfLen = Math.max(200, Math.floor(raw.length/2));
+    const firstHalf = raw.slice(0, halfLen);
+    const tags = await getTagsForText(firstHalf, title||'', authToken, apiBase);
+    return filterByFirstHalf(raw, tags, title||'');
+  } catch {
+    return original;
+  }
+}
+
+// ============================================
 // Semantic search + client-side relevance ranking
 // ============================================
 async function semanticSearch(query, authToken, apiBase, limit = 20) {
@@ -587,7 +671,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 async function robustExtractPage(tabId) {
   // Try content script first
   try {
-    const page = await chrome.tabs.sendMessage(tabId, { action: 'extractContent' });
+    const page = await chrome.tabs.sendMessage(tabId, { action: 'extractContent', full: true, maxLen: 200000 });
     if (page && page.content && page.content.length > 0) {
       return page;
     }
@@ -603,13 +687,13 @@ async function robustExtractPage(tabId) {
       func: () => {
         try {
           const prune = (root) => {
-            const sel = 'script, style, nav, header, footer, aside, [role="navigation"], [aria-label*="history" i], [aria-label*="conversations" i], iframe, noscript, svg, canvas, video, audio';
+            const sel = 'script, style, nav, header, footer, aside, [role="navigation"], [role="complementary"], [aria-label*="history" i], [aria-label*="conversations" i], [aria-label*="right" i], [aria-label*="extensions" i], [aria-label*="apps" i], [aria-label*="explore" i], [aria-label*="settings" i], iframe, noscript, svg, canvas, video, audio';
             root.querySelectorAll(sel).forEach((el) => el.remove());
           };
           const clone = document.body.cloneNode(true);
           prune(clone);
           const text = (clone.innerText || clone.textContent || '').replace(/\s+/g, ' ').trim();
-          const content = text.substring(0, 20000);
+          const content = text.substring(0, 200000);
           return { title: document.title, url: location.href, content };
         } catch (e) {
           return { title: document.title, url: location.href, content: '' };
@@ -639,7 +723,20 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         if (tab?.id) {
           const page = await robustExtractPage(tab.id);
           if (page && page.content && page.content.length > 0) {
-            dataToUpload.content = `Title: ${page.title}\nURL: ${page.url}\n\n${page.content}`;
+            let mainText = page.content;
+            // If Gemini page, apply AI relevance filter against first half
+            const isGemini = (tab?.url||'').toLowerCase().includes('gemini.google.com') || (tab?.url||'').toLowerCase().includes('ai.google.com');
+            if (isGemini && info.menuItemId === 'uploadFullToAer') {
+              try {
+                const storage = await chrome.storage.local.get(['authToken','token','apiUrl','apiBaseUrl']);
+                const authToken = storage.authToken || storage.token || API_TOKEN;
+                const apiBase = storage.apiUrl || storage.apiBaseUrl || DEFAULT_API_BASE;
+                if (authToken) {
+                  mainText = await aiFilterContentUsingFirstHalf(mainText, page.title, authToken, apiBase);
+                }
+              } catch {}
+            }
+            dataToUpload.content = `Title: ${page.title}\nURL: ${page.url}\n\n${mainText}`;
           } else {
             dataToUpload.content = `Page: ${tab.title}\nURL: ${tab.url}`;
           }

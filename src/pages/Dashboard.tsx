@@ -378,11 +378,17 @@ export default function Dashboard() {
   // Decrypt context summary for preview (not full content)
   const getDecryptedSummary = (context: any) => {
     if (context.encryptedSummary) {
+      // If server provided a "plain" envelope, show it directly without decrypting
+      if (context.encryptedSummary.nonce === 'plain') {
+        const t = String(context.encryptedSummary.ciphertext || '');
+        return t.length > 0 ? (t.length > 150 ? t.slice(0,150) + '...' : t) : '';
+      }
       const decrypted = decrypt(context.encryptedSummary);
       if (decrypted) return decrypted;
       const fallback = serverPlainById[context._id];
-      if (fallback) return (fallback.length > 150 ? fallback.slice(0, 150) + "..." : fallback) || "(Encrypted)";
-      return "(Decrypting...)";
+      if (fallback) return (fallback.length > 150 ? fallback.slice(0, 150) + "..." : fallback) || "";
+      // If we can't decrypt and have no fallback yet, show nothing
+      return "";
     }
     // Fallback to showing type if no summary
     return `${context.type === "file" ? "File" : "Note"} - No preview available`;

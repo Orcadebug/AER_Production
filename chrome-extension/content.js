@@ -7,7 +7,9 @@
       return true;
     }
     if (request.action === "extractContent") {
-      const content = extractMainContent();
+      const full = !!request.full;
+      const maxLen = typeof request.maxLen === 'number' ? request.maxLen : undefined;
+      const content = extractMainContent({ full, maxLen });
       sendResponse({
         title: document.title,
         url: window.location.href,
@@ -18,13 +20,14 @@
     return true;
   });
 
-  function extractMainContent() {
+  function extractMainContent(opts = {}) {
+    const MAX = typeof opts.maxLen === 'number' ? opts.maxLen : 20000;
     try {
       // 1) If user has a selection, prefer it
       const sel = window.getSelection && window.getSelection();
       const selected = sel && typeof sel.toString === 'function' ? (sel.toString() || '').trim() : '';
       if (selected && selected.length > 40) {
-        return cleanText(selected).slice(0, 20000);
+        return cleanText(selected).slice(0, MAX);
       }
 
       // 2) Expand common "show more" / "expand" controls within main
@@ -37,19 +40,19 @@
       const host = (location.hostname || '').toLowerCase();
       if (/chatgpt|openai\.com/.test(host)) {
         const t = extractChatGPT();
-        if (t && t.length > 0) return t.slice(0, 20000);
+        if (t && t.length > 0) return t.slice(0, MAX);
       }
       if (/perplexity\.ai/.test(host)) {
         const t = extractPerplexity();
-        if (t && t.length > 0) return t.slice(0, 20000);
+        if (t && t.length > 0) return t.slice(0, MAX);
       }
       if (/claude\.ai/.test(host)) {
         const t = extractClaude();
-        if (t && t.length > 0) return t.slice(0, 20000);
+        if (t && t.length > 0) return t.slice(0, MAX);
       }
       if (/gemini\.google\.com|bard\.google\.com|ai\.google\.com\/.+gemini/i.test(host + location.pathname)) {
-        const t = extractGemini();
-        if (t && t.length > 0) return t.slice(0, 20000);
+        const t = extractGemini({ full: !!opts.full, maxLen: MAX });
+        if (t && t.length > 0) return t.slice(0, MAX);
       }
 
       // 4) Generic: prefer role=main
@@ -57,16 +60,16 @@
       if (main) {
         const txt = main.innerText || main.textContent || '';
         const cleaned = cleanText(txt);
-        if (cleaned && cleaned.length > 0) return cleaned.slice(0, 20000);
+        if (cleaned && cleaned.length > 0) return cleaned.slice(0, MAX);
       }
 
       // 5) Fallback: whole page text
       const bodyText = (document.body && (document.body.innerText || document.body.textContent)) || '';
-      return cleanText(bodyText).slice(0, 20000);
+      return cleanText(bodyText).slice(0, MAX);
     } catch (e) {
       // Last-resort fallback
       const text = (document.body && (document.body.innerText || document.body.textContent)) || '';
-      return (text || '').toString().substring(0, 20000);
+      return (text || '').toString().substring(0, MAX);
     }
   }
 
@@ -167,11 +170,13 @@
     } catch { return ''; }
   }
 
-  function extractGemini() {
+  function extractGemini(opts = {}) {
     try {
+      const full = !!opts.full;
+      const MAX = typeof opts.maxLen === 'number' ? opts.maxLen : 20000;
       const root = document.querySelector('main, [role="main"]') || document.body;
 
-      const NAV_SIDEBAR_SEL = 'aside, nav, header, footer, [role="navigation"], [aria-label*="history" i], [aria-label*="conversations" i], [data-testid*="sidebar" i], [class*="sidebar" i]';
+      const NAV_SIDEBAR_SEL = 'aside, nav, header, footer, [role="navigation"], [role="complementary"], [aria-label*="history" i], [aria-label*="conversations" i], [aria-label*="sidebar" i], [aria-label*="right" i], [aria-label*="extensions" i], [aria-label*="apps" i], [aria-label*="explore" i], [aria-label*="settings" i], [data-testid*="sidebar" i], [data-testid*="right" i], [class*="sidebar" i], [class*="sidepanel" i], [class*="side-panel" i]';
 
       function isVisible(el) {
         if (!el || !el.getBoundingClientRect) return false;
@@ -186,6 +191,15 @@
         const withinCenterBand = centerX > window.innerWidth * 0.25 && centerX < window.innerWidth * 0.75;
         return r.width > 360 && withinCenterBand;
       }
+      function inConvoRootBand(el, root) {
+        if (!root) return true;
+        const rr = root.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        const centerX = (r.left + r.right) / 2;
+        const bandLeft = rr.left + rr.width * 0.1;
+        const bandRight = rr.right - rr.width * 0.1;
+        return r.width > 280 && centerX >= bandLeft && centerX <= bandRight && r.left >= rr.left && r.right <= rr.right;
+      }
       function withinConversationArea(el) {
         if (!el) return false;
         // Exclude anything under obvious nav/sidebars
@@ -194,8 +208,14 @@
       }
 
       // Try to locate the active conversation container (feed/list) first
-      const containerCandidates = Array.from(root.querySelectorAll('[role="feed"], [role="list"], [aria-live="polite"], c-wiz, section'))
-        .filter((el) => withinConversationArea(el) && isVisible(el) && inCentralColumn(el));
+      const containerCandidates = Array.from(root.querySelectorAll('main [role="feed"], main [role="list"], main [aria-live="polite"], main c-wiz, [role="feed"], [role="list"], [aria-live="polite"]'))
+        .filter((el) =>
+          withinConversationArea(el)
+          && (full ? inCentralColumn(el) : (isVisible(el) && inCentralColumn(el)))
+          && !el.closest(NAV_SIDEBAR_SEL)
+          && !el.querySelector(NAV_SIDEBAR_SEL)
+          && el.querySelectorAll('article, [role="listitem"], div[class*="prose"], [data-message-author-role]').length >= 2
+        );
 
       function scoreContainer(el) {
         const r = el.getBoundingClientRect();
@@ -213,13 +233,13 @@
 
       // Prefer JSON/code blocks from the assistant (Gemini often renders structured JSON in code blocks)
       const jsonBlocks = Array.from(convoRoot.querySelectorAll('pre, code, pre code, div[class*="code"], code[class*="language-json"], [data-language="json"]'))
-        .filter((el) => withinConversationArea(el) && isVisible(el) && inCentralColumn(el))
+        .filter((el) => withinConversationArea(el) && inConvoRootBand(el, convoRoot) && (full ? true : isVisible(el)))
         .map((el) => (el.innerText || el.textContent || '').trim())
         .filter((t) => t && /[{\[]/.test(t) && /:\s*"?\w/.test(t));
       if (jsonBlocks.length) {
         // Return the largest JSON-looking block
         const best = jsonBlocks.sort((a, b) => b.length - a.length)[0];
-        return cleanText(best).slice(0, 20000);
+        return cleanText(best).slice(0, MAX);
       }
 
       // Candidate message nodes within the conversation area only
@@ -235,19 +255,19 @@
 
       // Keep nodes that are visible, in center, not within nav/sidebars
       const msgs = candidates
-        .filter((n) => withinConversationArea(n) && isVisible(n) && inCentralColumn(n))
+        .filter((n) => withinConversationArea(n) && inConvoRootBand(n, convoRoot) && (full ? true : isVisible(n)))
         .map((n) => (n.innerText || n.textContent || '').trim())
         .filter(Boolean)
         // Deduplicate consecutive identicals
         .filter((t, i, arr) => i === 0 || t !== arr[i - 1]);
 
       // Limit to last 12 message blocks to reflect the current chat context
-      const recent = msgs.slice(-12);
-      if (recent.length > 0) return cleanText(recent.join('\n\n'));
+      const selected = full ? msgs : msgs.slice(-12);
+      if (selected.length > 0) return cleanText(selected.join('\n\n'));
 
       // Fallback: visible text from central area only, excluding sidebars/nav
-      const blocks = Array.from(convoRoot.querySelectorAll('*'))
-        .filter((el) => withinConversationArea(el) && isVisible(el) && inCentralColumn(el))
+      const blocks = Array.from(convoRoot.querySelectorAll('article, [role="listitem"], div[class*="prose"], [data-message-author-role]'))
+        .filter((el) => withinConversationArea(el) && inConvoRootBand(el, convoRoot) && (full ? true : isVisible(el)))
         .map((el) => (el.innerText || el.textContent || '').trim())
         .filter(Boolean);
       if (blocks.length > 0) return cleanText(blocks.slice(-20).join('\n\n'));

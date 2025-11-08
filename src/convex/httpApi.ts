@@ -145,6 +145,15 @@ export const uploadContext = httpAction(async (ctx, request) => {
       );
     }
 
+    // Provide immediate, non-sensitive summary fallback if possible (shown as plain preview)
+    if ((!encryptedSummary || !encryptedSummary.ciphertext || !encryptedSummary.nonce) && (typeof plaintext === 'string' || typeof content === 'string')) {
+      const src = (typeof plaintext === 'string' ? plaintext : (typeof content === 'string' ? content : '')) || '';
+      const preview = src.trim().slice(0, 200);
+      if (preview) {
+        encryptedSummary = { ciphertext: preview, nonce: 'plain' } as any;
+      }
+    }
+
     // Create context via internal mutation bound to userId
     const contextId = await ctx.runMutation(internal.contextsInternal.createForUser, {
       userId,
