@@ -9,8 +9,7 @@ import { useNavigate } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
 
-function BillingToggle() {
-  const [yearly, setYearly] = useBilling();
+function BillingToggle({ yearly, setYearly }: { yearly: boolean; setYearly: (v: boolean) => void }) {
   return (
     <div className="inline-flex items-center gap-2 rounded-full border bg-card p-1">
       <button
@@ -32,15 +31,14 @@ function BillingToggle() {
 }
 
 function PlanFree() {
-  const [yearly] = useBilling();
   return (
-    <div className="rounded-lg border p-8 text-center hover:shadow-sm transition-shadow">
+    <div className="rounded-lg border p-8 text-left hover:shadow-sm transition-shadow">
       <h3 className="text-2xl font-bold tracking-tight">Free</h3>
       <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-        <li>📦 100 MB</li>
-        <li>🔍 50 searches/month <span className="text-muted-foreground">(90 premium image messages/day)</span></li>
-        <li>🔐 Full encryption</li>
-        <li>✅ Browser + Desktop</li>
+        <li className="flex items-start gap-2"><HardDrive className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>100 MB storage</span></li>
+        <li className="flex items-start gap-2"><Search className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>50 searches/month <span className="text-muted-foreground">(90 premium image messages/day)</span></span></li>
+        <li className="flex items-start gap-2"><Shield className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Full encryption</span></li>
+        <li className="flex items-start gap-2"><Monitor className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Browser + Desktop</span></li>
       </ul>
       <Button onClick={() => window.location.assign('/auth')} className="mt-6 w-full bg-[#8BA888] hover:bg-[#7A9777]">
         Start Free
@@ -49,13 +47,12 @@ function PlanFree() {
   );
 }
 
-function PlanPro() {
-  const [yearly] = useBilling();
+function PlanPro({ yearly }: { yearly: boolean }) {
   const price = yearly
-    ? { main: '$90', suffix: '/year', sub: 'Save 17% • Billed yearly', href: '/upgrade?plan=pro&billing=yearly' }
-    : { main: '$9', suffix: '/mo', sub: 'Billed monthly', href: '/upgrade?plan=pro&billing=monthly' };
+    ? { main: '$90', suffix: '/year', sub: 'Billed yearly • Save 17%', href: '/upgrade?plan=pro&billing=yearly' }
+    : { main: '$10', suffix: '/mo', sub: 'Billed monthly', href: '/upgrade?plan=pro&billing=monthly' };
   return (
-    <div className="relative rounded-lg border p-8 text-center hover:shadow-sm transition-shadow">
+    <div className="relative rounded-lg border p-8 text-left hover:shadow-sm transition-shadow">
       <div className="absolute -top-3 right-4 rounded-full border bg-background px-2 py-0.5 text-xs font-semibold">MOST POPULAR</div>
       <h3 className="text-2xl font-bold tracking-tight">Pro</h3>
       <div className="mt-2 text-3xl font-bold tracking-tight">
@@ -64,10 +61,10 @@ function PlanPro() {
       </div>
       <div className="text-xs text-muted-foreground">{price.sub}</div>
       <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-        <li>📦 10 GB</li>
-        <li>🔍 300 searches/month</li>
-        <li>📤 Bulk uploads</li>
-        <li>✅ Advanced features</li>
+        <li className="flex items-start gap-2"><HardDrive className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>10 GB storage</span></li>
+        <li className="flex items-start gap-2"><Search className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>300 searches/month</span></li>
+        <li className="flex items-start gap-2"><Upload className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Bulk uploads</span></li>
+        <li className="flex items-start gap-2"><Sparkles className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Advanced features</span></li>
       </ul>
       <Button onClick={() => window.location.assign(price.href)} className="mt-6 w-full">
         Upgrade Now
@@ -76,13 +73,12 @@ function PlanPro() {
   );
 }
 
-function PlanMax() {
-  const [yearly] = useBilling();
+function PlanMax({ yearly }: { yearly: boolean }) {
   const price = yearly
-    ? { main: '$290', suffix: '/year', sub: 'Save 17% • Billed yearly', href: '/upgrade?plan=max&billing=yearly' }
-    : { main: '$29', suffix: '/mo', sub: 'Billed monthly', href: '/upgrade?plan=max&billing=monthly' };
+    ? { main: '$290', suffix: '/year', sub: 'Billed yearly • Save 17%', href: '/upgrade?plan=max&billing=yearly' }
+    : { main: '$25', suffix: '/mo', sub: 'Billed monthly', href: '/upgrade?plan=max&billing=monthly' };
   return (
-    <div className="rounded-lg border p-8 text-center hover:shadow-sm transition-shadow">
+    <div className="rounded-lg border p-8 text-left hover:shadow-sm transition-shadow">
       <h3 className="text-2xl font-bold tracking-tight">Max</h3>
       <div className="mt-2 text-3xl font-bold tracking-tight">
         {price.main}
@@ -90,9 +86,9 @@ function PlanMax() {
       </div>
       <div className="text-xs text-muted-foreground">{price.sub}</div>
       <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-        <li>📦 100 GB</li>
-        <li>🔍 1,000 searches/month</li>
-        <li>📞 Priority support</li>
+        <li className="flex items-start gap-2"><HardDrive className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>100 GB storage</span></li>
+        <li className="flex items-start gap-2"><Search className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>1,000 searches/month</span></li>
+        <li className="flex items-start gap-2"><LifeBuoy className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Priority support</span></li>
       </ul>
       <Button onClick={() => window.location.assign(price.href)} variant="outline" className="mt-6 w-full">
         Get Max
@@ -101,14 +97,11 @@ function PlanMax() {
   );
 }
 
-function useBilling(): [boolean, (v: boolean) => void] {
-  const [yearly, setYearly] = useState(true);
-  return [yearly, setYearly];
-}
 
 export default function Landing() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading } = useAuth();
+  const [yearly, setYearly] = useState(true);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -444,19 +437,19 @@ export default function Landing() {
           viewport={{ once: true }}
           className="text-center max-w-6xl mx-auto"
         >
-          <h2 className="text-4xl font-bold tracking-tight mb-4">Pricing</h2>
+          <h2 className="text-4xl font-bold tracking-tight mb-4">Aer Pricing</h2>
           <p className="text-lg text-muted-foreground mb-8">Flexible plans for individuals and teams</p>
 
           {/* Billing toggle */}
-          <BillingToggle />
+          <BillingToggle yearly={yearly} setYearly={setYearly} />
 
           <div className="mt-6 grid gap-6 md:grid-cols-3">
             {/* Free */}
             <PlanFree />
             {/* Pro */}
-            <PlanPro />
+            <PlanPro yearly={yearly} />
             {/* Max */}
-            <PlanMax />
+            <PlanMax yearly={yearly} />
           </div>
         </motion.div>
       </section>
