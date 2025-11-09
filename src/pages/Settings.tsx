@@ -202,62 +202,11 @@ export default function Settings() {
                     <Badge variant="secondary">{user?.membershipTier || "free"}</Badge>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {myUsage ? (
-                      <>Usage: {myUsage.usedPerplexity}/{myUsage.allowedPerplexity} Perplexity calls this month</>
-                    ) : (
-                      <>Perplexity monthly limit: Free 30 · Pro 300 · Owner unlimited</>
-                    )}
+                    Pricing and plan details will appear here once plans go live.
                   </div>
                   <div className="flex gap-2">
-                    <Button
-                      className="bg-[#8BA888] hover:bg-[#7A9777]"
-                      onClick={async () => {
-                        // Create a checkout session for Pro
-                        try {
-                          const cloud = (import.meta.env.VITE_CONVEX_URL as string) || "https://honorable-porpoise-222.convex.cloud";
-                          const site = (import.meta.env.VITE_CONVEX_SITE_URL as string) || cloud.replace("convex.cloud", "convex.site");
-                          const endpoint = `${site}/api/pay/checkout`;
-                          console.log("Checkout POST ->", endpoint);
-const res = await fetch(endpoint, {
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
-                              Authorization: `Bearer ${authToken}`,
-                            },
-                          });
-                          if (!res.ok) {
-                            const bodyText = await res.text().catch(() => "");
-                            console.error("Checkout HTTP error:", res.status, bodyText);
-                            try {
-                              const j = JSON.parse(bodyText);
-                              toast.error(j?.error || `Checkout failed (${res.status})`);
-                            } catch {
-                              toast.error(`Checkout failed (${res.status})`);
-                            }
-                            return;
-                          }
-                          let data: any = null;
-                          try {
-                            data = await res.json();
-                          } catch {
-                            const body = await res.text().catch(() => "");
-                            console.error("Checkout non-JSON response:", body);
-                            toast.error("Checkout failed (invalid response)");
-                            return;
-                          }
-                          if (data?.url) {
-                            window.location.href = data.url;
-                          } else {
-                            console.error("Checkout response:", data);
-                            toast.error("No checkout URL received");
-                          }
-                        } catch (e) {
-                          console.error("Checkout error:", e);
-                          toast.error("Failed to start checkout");
-                        }
-                      }}
-                    >
-                      Upgrade to Pro ($9/mo)
+                    <Button variant="outline" disabled>
+                      Upgrade (Coming Soon)
                     </Button>
                   </div>
 

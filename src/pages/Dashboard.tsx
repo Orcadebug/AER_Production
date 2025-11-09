@@ -38,6 +38,7 @@ export default function Dashboard() {
   const [editContent, setEditContent] = useState<string>("");
   const [editProject, setEditProject] = useState<string>("none");
   const [serverPlainById, setServerPlainById] = useState<Record<string, string>>({});
+  const [serverSummaryById, setServerSummaryById] = useState<Record<string, string>>({});
 
   const contextsResult = useQuery(
     api.contexts.listPaginated,
@@ -56,6 +57,7 @@ export default function Dashboard() {
 
   const matchQueryToTags = useAction(api.ai.matchQueryToTags);
   const decryptServer = useAction(api.contexts.decryptServer);
+  const decryptSummaryServer = useAction((api as any).contexts.decryptSummaryServer);
 
   const createContext = useMutation(api.contexts.create);
   const createProject = useMutation(api.projects.create);
@@ -165,7 +167,15 @@ export default function Dashboard() {
           const local = c.encryptedContent ? decrypt(c.encryptedContent) : null;
           if (!local && !serverPlainById[c._id]) {
             const plain = await decryptServer({ id: c._id });
-            setServerPlainById((m) => ({ ...m, [c._id]: plain || "" }));
+            if (typeof plain === 'string' && plain.trim().length > 0) {
+              setServerPlainById((m) => ({ ...m, [c._id]: plain }));
+            }
+          }
+          if (c.encryptedSummary && c.encryptedSummary.nonce !== 'plain' && !serverSummaryById[c._id]) {
+            const s = await decryptSummaryServer({ id: c._id });
+            if (typeof s === 'string' && s.trim().length > 0) {
+              setServerSummaryById((m) => ({ ...m, [c._id]: s }));
+            }
           }
         } catch {}
       }
@@ -246,7 +256,38 @@ export default function Dashboard() {
       });
       const { storageId } = await result.json();
 
-      // Extract text content from PDF files
+      // Route DOCX through server extractor for robust text parsing
+      const isDocx = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.toLowerCase().endsWith('.docx');
+      if (isDocx) {
+        try {
+          const convexUrl = (import.meta as any).env?.VITE_CONVEX_URL as string;
+          if (!convexUrl) throw new Error('Missing VITE_CONVEX_URL');
+          const resp = await fetch(`${convexUrl}/api/context/upload`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer aer_${user!._id}`,
+            },
+            body: JSON.stringify({
+              storageId,
+              fileType: file.type,
+              fileName: file.name,
+              title: file.name.substring(0, 80),
+            }),
+          });
+          if (!resp.ok) {
+            const txt = await resp.text().catch(()=>"");
+            throw new Error(`Upload API failed: ${resp.status} ${txt}`);
+          }
+          toast.success("File uploaded successfully");
+          return;
+        } catch (err) {
+          console.error('DOCX server upload failed, falling back to client path:', err);
+          toast.warning('DOCX text extraction failed server-side, storing metadata only');
+        }
+      }
+
+      // Extract text content from PDF files (client-side E2E)
       let fileContent = `Uploaded file: ${file.name}`;
       let fileSummary = `File uploaded: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
       
@@ -385,6 +426,8 @@ export default function Dashboard() {
       }
       const decrypted = decrypt(context.encryptedSummary);
       if (decrypted) return decrypted;
+      const s = serverSummaryById[context._id];
+      if (s) return (s.length > 150 ? s.slice(0,150) + '...' : s) || '';
       const fallback = serverPlainById[context._id];
       if (fallback) return (fallback.length > 150 ? fallback.slice(0, 150) + "..." : fallback) || "";
       // If we can't decrypt and have no fallback yet, show nothing
@@ -633,7 +676,15 @@ export default function Dashboard() {
                 try {
                   if (!decrypt(context.encryptedContent) && !serverPlainById[context._id]) {
                     const plain = await decryptServer({ id: context._id });
-                    setServerPlainById((m) => ({ ...m, [context._id]: plain || "" }));
+                    if (typeof plain === 'string' && plain.trim().length > 0) {
+                      setServerPlainById((m) => ({ ...m, [context._id]: plain }));
+                    }
+                  }
+                  if (context.encryptedSummary && context.encryptedSummary.nonce !== 'plain' && !serverSummaryById[context._id]) {
+                    const s = await decryptSummaryServer({ id: context._id });
+                    if (typeof s === 'string' && s.trim().length > 0) {
+                      setServerSummaryById((m) => ({ ...m, [context._id]: s }));
+                    }
                   }
                 } catch {}
               }}>

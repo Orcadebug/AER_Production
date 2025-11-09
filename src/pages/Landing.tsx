@@ -275,115 +275,36 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pricing Section */}
+      {/* Pricing Section (Coming Soon) */}
       <section className="container mx-auto px-4 py-20 border-t">
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
+          className="text-center max-w-3xl mx-auto"
         >
-          <h2 className="text-4xl font-bold tracking-tight mb-4">Simple, Honest Pricing</h2>
-          <p className="text-xl text-muted-foreground">No hidden fees. Cancel anytime.</p>
-        </motion.div>
-
-        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {[
-            {
-              name: "Free",
-              price: "$0",
-              description: "Perfect for trying it out",
-              features: [
-                "5GB encrypted storage",
-                "30 AI searches/month",
-                "Unlimited uploads",
-                "Web + extensions",
-                "Linux desktop beta",
-                "Real-time sync",
-              ],
-              cta: "Get Started",
-              highlighted: false
-            },
-            {
-              name: "Pro",
-              price: "$15",
-              period: "/month",
-              description: "More usage, more peace of mind",
-              features: [
-                "100GB encrypted storage",
-                "500 AI searches/month",
-                "Unlimited uploads",
-                "Web + extensions + Linux desktop beta",
-                "Priority access to desktop (Windows/Mac) rollouts",
-                "Real-time sync",
-                "Priority support",
-              ],
-              cta: "Upgrade Now",
-              highlighted: true
-            },
-            {
-              name: "Team",
-              price: "$49",
-              period: "/month",
-              description: "For teams (coming soon)",
-              features: [
-                "Unlimited storage",
-                "Unlimited AI searches",
-                "Shared vaults",
-                "Team management",
-                "Audit logs",
-                "API access",
-              ],
-              cta: "Notify Me",
-              highlighted: false
-            }
-          ].map((plan, idx) => (
-            <motion.div
-              key={plan.name}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              viewport={{ once: true }}
-              className={`rounded-lg border p-8 flex flex-col ${
-                plan.highlighted
-                  ? "border-[#8BA888] bg-[#8BA888]/5 relative"
-                  : "border-border hover:border-[#8BA888]/50"
-              }`}
-            >
-              {plan.highlighted && (
-                <div className="absolute top-0 right-0 bg-[#8BA888] text-white text-xs font-semibold px-3 py-1 rounded-bl-lg rounded-tr-lg">
-                  Popular
-                </div>
-              )}
-              <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-              <p className="text-muted-foreground text-sm mb-4">{plan.description}</p>
-              <div className="mb-6">
-                <span className="text-4xl font-bold">{plan.price}</span>
-                {plan.period && <span className="text-muted-foreground ml-2">{plan.period}</span>}
-              </div>
-              <ul className="space-y-3 mb-8 flex-1">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-[#8BA888] mt-0.5 flex-shrink-0" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              <Button
-                onClick={() => navigate("/auth")}
-                className={`w-full ${
-                  plan.highlighted
-                    ? "bg-[#8BA888] hover:bg-[#7A9777]"
-                    : "border border-input hover:bg-accent"
-                }`}
-                variant={plan.highlighted ? "default" : "outline"}
+          <h2 className="text-4xl font-bold tracking-tight mb-4">Pricing</h2>
+          <p className="text-lg text-muted-foreground mb-8">
+            Pricing and plans are coming soon. We’re finalizing details and will announce early-bird options shortly.
+          </p>
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            {["Free","Pro","Team"].map((tier, idx) => (
+              <motion.div
+                key={tier}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                viewport={{ once: true }}
+                className="rounded-lg border p-8 text-center"
               >
-                {plan.cta}
-              </Button>
-            </motion.div>
-          ))}
-        </div>
+                <h3 className="text-2xl font-bold mb-2">{tier}</h3>
+                <p className="text-sm text-muted-foreground mb-6">Details coming soon</p>
+                <Button disabled variant="outline" className="w-full">Coming Soon</Button>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
       </section>
 
       {/* Comparison Section */}

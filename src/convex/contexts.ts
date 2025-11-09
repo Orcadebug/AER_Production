@@ -370,6 +370,19 @@ export const decryptServer = action({
   },
 });
 
+export const decryptSummaryServer = action({
+  args: { id: v.id("contexts") },
+  handler: async (ctx, args) => {
+    const context = await ctx.runQuery(api.contexts.get, { id: args.id });
+    if (!context) throw new Error("Not found");
+    const sum = (context as any).encryptedSummary as { ciphertext: string; nonce: string } | undefined;
+    if (!sum || !sum.ciphertext || !sum.nonce) return "";
+    if (sum.nonce === 'plain') return String(sum.ciphertext || '');
+    const plain = serverDecryptString(sum.ciphertext, sum.nonce);
+    return plain || "";
+  },
+});
+
 export const exportAllContexts = query({
   args: { format: v.union(v.literal("markdown"), v.literal("json")) },
   handler: async (ctx, args) => {
