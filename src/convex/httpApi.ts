@@ -514,3 +514,395 @@ export const searchContexts = httpAction(async (ctx, request) => {
     );
   }
 });
+
+/**
+ * Health check for premium config
+ * GET /api/premium/health
+ * Returns { hasOpenAI: boolean }
+ */
+export const premiumHealth = httpAction(async (_ctx, request) => {
+  if (request.method !== "GET") {
+    return new Response("Method Not Allowed", { status: 405 });
+  }
+  const hasOpenAI = !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0;
+  return new Response(JSON.stringify({ hasOpenAI }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+});
+
+/**
+ * HTTP API endpoint for Premium analysis used by the desktop agent
+ * POST /api/premium/analyze
+ * Body: { image: 'data:image/png;base64,...' }
+ * Auth: Bearer aer_{userId}
+ */
+export const premiumAnalyze = httpAction(async (ctx, request) => {
+  try {
+    // Auth check
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const token = authHeader.substring(7);
+    if (!token.startsWith("aer_")) {
+      return new Response(JSON.stringify({ error: "Invalid token format" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const userId = token.substring(4) as Id<"users">;
+
+    // Verify user exists
+    const user = await ctx.runQuery(internal.users.getUserById, { userId });
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Invalid authentication token" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Parse body
+    const body = await request.json().catch(() => ({}));
+    const image: string | undefined = body?.image;
+    if (!image || typeof image !== "string" || !/^data:image\//.test(image)) {
+      return new Response(JSON.stringify({ error: "Invalid or missing image" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Per-minute AI rate limit
+    const rl = await ctx.runMutation(internal.entitlements.assertAndIncrementRateLimit, { userId, key: "ai" });
+    if (!rl.ok) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded", code: "RATE_LIMIT", details: rl, suggestUpgrade: true }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Monthly allowance check (reuse perplexity counter for now)
+    const allowed = await ctx.runQuery(internal.entitlements.assertPerplexityAllowed, { userId });
+    if (!allowed.ok) {
+      return new Response(
+        JSON.stringify({ error: "CREDITS_EXHAUSTED", code: "CREDITS_EXHAUSTED", used: allowed.used, allowed: allowed.allowed }),
+        { status: 402, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Ensure OpenAI configured
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: "NOT_CONFIGURED", message: "OPENAI_API_KEY not set" }),
+        { status: 501, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Build vision prompt (saved, used for all premium vision analyses)
+    const system = `You are a meticulous vision analyst. Your job is to extract, organize, and explain every meaningful detail from one or more images so a reader can understand 100% of what is shown without seeing the image. Be exhaustive but organized. Do not guess identities. Distinguish observation from inference. Express uncertainty clearly.
+
+Core principles:
+- Be complete: capture all visible elements, even minor details and background items.
+- Be precise: use left/right/top/bottom relative to the viewer; include counts and approximate sizes.
+- Be transparent: separate facts vs. plausible inferences; add confidence percentages per inference.
+- Be safe: do not identify people by name; describe attributes only. Redact personal data only if it is private and sensitive (e.g., full phone, SSN); otherwise transcribe visible text faithfully.
+- Be consistent: use the specified output sections and formats exactly.
+
+If multiple images are provided, treat them as pages and repeat all sections per image, labeling them "Image 1", "Image 2", etc.
+
+OUTPUT STRUCTURE
+
+### Snapshot Overview
+- One paragraph that plainly summarizes the scene, main subjects, setting, visible text presence, and the likely purpose of the image.
+
+### Scene and Setting
+- Location type (e.g., street, office, kitchen, document scan, app UI).
+- Environment details (indoor/outdoor, time of day if visible, weather if applicable).
+- Background elements and context (walls, windows, posters, skyline, furniture).
+- Color palette highlights with approximate hex codes for 3–6 dominant colors.
+
+### Subjects and People
+- Count of people and approximate ages, apparent genders, skin tones, and notable attributes (clothing, accessories, posture, expressions).
+- Face visibility (frontal/profile/occluded) and face count.
+- Emotions or expressions with confidence percentages.
+- Safety gear or uniforms if any.
+
+### Objects and Items
+- List all distinct objects with counts, approximate sizes (relative: tiny/small/medium/large), materials, and colors.
+- Note brands/logos if clearly legible; if uncertain, state ambiguity.
+
+### Text and Symbols (OCR)
+- Transcribe all visible text exactly as seen, preserving line breaks, casing, punctuation, and emojis.
+- For unreadable portions, write “[illegible]”.
+- Provide a table of text blocks with:
+  - id | text | language | style (font/handwriting/printed) | color | reading_order | bbox_(x,y,w,h_pct) | confidence_pct
+- After the table, include a "Verbatim Transcript" with the full text in reading order.
+
+### Layout and Spatial Map
+- Describe spatial arrangement: where key subjects/objects/text are located (e.g., “logo at top-left; headline centered; button bottom-right”).
+- Provide an ASCII mini-map (optional if helpful) showing approximate placements labeled with short tags.
+
+### Actions and Interactions
+- Describe what subjects are doing, their interactions with objects or each other, gestures, and gaze directions.
+- Note any sequence or implied motion.
+
+### Visual Style and Camera
+- Medium (photo, screenshot, scan, illustration, 3D render).
+- Camera: focal characteristics (wide/telephoto), angle (eye-level/high/low), framing (close-up/medium/wide), depth of field, lighting type (natural/flash/softbox/backlit), shadows, reflections.
+- Aesthetic/style descriptors (e.g., minimal, cinematic, flat UI, skeuomorphic).
+
+### Data and Counts
+- Totals for: people, faces, text blocks, icons, logos, buttons (if UI), tables, charts, vehicles, animals, plants, and other recurring categories visible.
+- Summarize color counts for dominant items (e.g., “3 blue buttons, 2 red warnings”).
+
+### Charts, Tables, and UI (if present)
+- Identify components (nav bars, sidebars, modals, cards, forms, table columns, chart types).
+- For tables: list column headers and example rows. For charts: axes titles/units, legend items, key values/patterns.
+
+### Reasoning and Inferences
+- List plausible inferences with:
+  - statement | evidence (visual cues) | alternative explanations | confidence_pct
+- Include time/place clues (calendars, clocks, signage, weather, language) with confidence.
+
+### Quality, Artifacts, and Uncertainty
+- Image quality issues (blur, noise, glare, compression artifacts, cropping).
+- What cannot be determined and why.
+- Ambiguous regions with bbox_(x,y,w,h_pct).
+
+### Safety, Privacy, and Sensitive Content
+- Note presence of sensitive content (violence, medical, minors, private info).
+- Do not name individuals. If IDs/addresses are fully visible, report they are visible and transcribe, unless they appear to be highly sensitive; in that case`;
+
+    const payload = {
+      model: "gpt-4o-mini",
+      temperature: 0.2,
+      max_tokens: 3000,
+      messages: [
+        { role: "system", content: system },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Analyze the following image. Follow the OUTPUT STRUCTURE exactly. Be exhaustive and organized. If multiple images are provided, treat them as pages labeled 'Image 1', 'Image 2', etc." },
+            { type: "image_url", image_url: { url: image } },
+          ],
+        },
+      ],
+    } as any;
+
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.status === 401 || res.status === 403) {
+      return new Response(
+        JSON.stringify({ error: "NOT_CONFIGURED", message: "OpenAI rejected the request (check OPENAI_API_KEY)." }),
+        { status: 501, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    if (res.status === 429) {
+      return new Response(
+        JSON.stringify({ error: "PROVIDER_RATE_LIMIT", message: "OpenAI rate limit hit. Try again shortly." }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      return new Response(
+        JSON.stringify({ error: "PROVIDER_ERROR", message: text || `OpenAI error: ${res.status}` }),
+        { status: 502, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const data = await res.json();
+    let analysis = "";
+    try {
+      const raw = data?.choices?.[0]?.message?.content;
+      if (typeof raw === "string") {
+        analysis = raw.trim();
+      } else if (Array.isArray(raw)) {
+        const txt = raw.map((p: any) => (p?.text || p?.content || "")).join(" ").trim();
+        analysis = txt;
+      }
+    } catch {}
+
+    if (!analysis) {
+      analysis = "No analysis returned.";
+    }
+
+    // Increment monthly usage on success
+    try { await ctx.runMutation(internal.entitlements.incrementPerplexity, { userId, amount: 1 }); } catch {}
+
+    return new Response(
+      JSON.stringify({ insights: analysis }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Premium analyze error:", error);
+    return new Response(
+      JSON.stringify({ error: "Internal server error" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+});
+
+/**
+ * HTTP API endpoint to fetch a remote file by URL and store as a context without client download.
+ * POST /api/context/fetch-remote
+ * Body: { url: string, title?: string, tags?: string[] }
+ * Auth: Bearer aer_{userId}
+ */
+export const fetchRemoteContext = httpAction(async (ctx, request) => {
+  try {
+    // Auth
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
+    }
+    const token = authHeader.substring(7);
+    if (!token.startsWith("aer_")) {
+      return new Response(JSON.stringify({ error: "Invalid token format" }), { status: 401, headers: { "Content-Type": "application/json" } });
+    }
+    const userId = token.substring(4) as Id<"users">;
+
+    const user = await ctx.runQuery(internal.users.getUserById, { userId });
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Invalid authentication token" }), { status: 401, headers: { "Content-Type": "application/json" } });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const rawUrl: string | undefined = body?.url;
+    let title: string | undefined = body?.title;
+    let tags: string[] | undefined = Array.isArray(body?.tags) ? body.tags : undefined;
+    if (!rawUrl || typeof rawUrl !== 'string') {
+      return new Response(JSON.stringify({ error: "Missing url" }), { status: 400, headers: { "Content-Type": "application/json" } });
+    }
+
+    // Basic SSRF protections
+    let url: URL;
+    try {
+      url = new URL(rawUrl);
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('Only http/https allowed');
+      const host = url.hostname.toLowerCase();
+      const ipLike = /^\d+\.\d+\.\d+\.\d+$/.test(host);
+      if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || ipLike) {
+        return new Response(JSON.stringify({ error: "Blocked host" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid url" }), { status: 400, headers: { "Content-Type": "application/json" } });
+    }
+
+    // Rate limit
+    const rl = await ctx.runMutation(internal.entitlements.assertAndIncrementRateLimit, { userId, key: "upload" });
+    if (!rl.ok) {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded", details: rl, suggestUpgrade: true }), { status: 429, headers: { "Content-Type": "application/json" } });
+    }
+
+    // Fetch HEAD first when possible
+    let contentLength = 0;
+    try {
+      const head = await fetch(url.toString(), { method: 'HEAD' });
+      const len = head.headers.get('content-length');
+      if (len) contentLength = parseInt(len, 10) || 0;
+    } catch {}
+
+    const MAX_BYTES = 32 * 1024 * 1024; // 32MB safety limit
+    if (contentLength > MAX_BYTES) {
+      return new Response(JSON.stringify({ error: `File too large (>${Math.floor(MAX_BYTES/1024/1024)}MB)` }), { status: 413, headers: { "Content-Type": "application/json" } });
+    }
+
+    // Download with size guard
+    const res = await fetch(url.toString(), { method: 'GET' });
+    if (!res.ok) {
+      return new Response(JSON.stringify({ error: `Fetch failed: ${res.status}` }), { status: 502, headers: { "Content-Type": "application/json" } });
+    }
+
+    const type = res.headers.get('content-type') || 'application/octet-stream';
+    const disp = res.headers.get('content-disposition') || '';
+    const nameFromDisp = (() => { const m = disp.match(/filename\*=UTF-8''([^;\n]+)/) || disp.match(/filename="?([^";\n]+)"?/); return m ? decodeURIComponent(m[1]) : null; })();
+    const nameFromPath = url.pathname.split('/').pop() || 'file';
+    const fileName = (title && title.trim()) || nameFromDisp || nameFromPath;
+
+    // Stream-read to cap size
+    let bytes = 0;
+    const chunks: Uint8Array[] = [];
+    const reader = (res.body as any)?.getReader ? (res.body as any).getReader() : null;
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk: Uint8Array = value;
+        bytes += chunk.byteLength;
+        if (bytes > MAX_BYTES) {
+          try { reader.cancel(); } catch {}
+          return new Response(JSON.stringify({ error: `File too large (>${Math.floor(MAX_BYTES/1024/1024)}MB)` }), { status: 413, headers: { "Content-Type": "application/json" } });
+        }
+        chunks.push(chunk);
+      }
+    } else {
+      const buf = new Uint8Array(await res.arrayBuffer());
+      if (buf.byteLength > MAX_BYTES) {
+        return new Response(JSON.stringify({ error: `File too large (>${Math.floor(MAX_BYTES/1024/1024)}MB)` }), { status: 413, headers: { "Content-Type": "application/json" } });
+      }
+      chunks.push(buf);
+      bytes = buf.byteLength;
+    }
+
+    const blob = new Blob(chunks, { type });
+
+    // Enforce storage quota (approx using bytes and small envelopes)
+    const storageStatus = await ctx.runQuery(internal.entitlements.assertStorageAllowed, { userId, additionalBytes: bytes + 1024 });
+    if (!storageStatus.ok) {
+      return new Response(JSON.stringify({ error: "Storage limit exceeded", details: storageStatus, suggestUpgrade: true }), { status: 402, headers: { "Content-Type": "application/json" } });
+    }
+
+    // Store file in Convex storage
+    const storageId = await ctx.storage.store(blob);
+
+    // Prepare encrypted content and summary (metadata only to keep E2E invariant)
+    const metaText = `File: ${fileName} (${(bytes/1024).toFixed(1)} KB)\nType: ${type}\nURL: ${url.toString()}`;
+    const encryptedContent = serverEncryptString(metaText);
+    const encryptedTitle = serverEncryptString(fileName);
+    const encryptedSummary = serverEncryptString(metaText.slice(0, 200));
+
+    // Source tag
+    const srcTag = detectSourceTagFromUrl(url.toString());
+    if (srcTag) tags = mergeTags(tags, srcTag);
+
+    // Create the context document
+    const contextId = await ctx.runMutation(internal.contextsInternal.createForUser, {
+      userId,
+      type: 'file' as any,
+      fileId: storageId as any,
+      fileName,
+      fileType: type,
+      url: url.toString(),
+      encryptedContent,
+      encryptedTitle,
+      encryptedSummary,
+      tags,
+      plaintextContent: metaText,
+    });
+
+    await ctx.scheduler.runAfter(0, internal.audit.logAuditEvent, {
+      userId,
+      action: "API_FETCH_REMOTE_CONTEXT",
+      resourceType: "context",
+      resourceId: contextId,
+      success: true,
+    });
+
+    return new Response(JSON.stringify({ success: true, contextId, storageId }), { status: 200, headers: { "Content-Type": "application/json" } });
+  } catch (error) {
+    console.error("Fetch remote context error:", error);
+    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { "Content-Type": "application/json" } });
+  }
+});
