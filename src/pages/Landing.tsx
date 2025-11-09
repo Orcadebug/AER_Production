@@ -34,18 +34,13 @@ function BillingToggle() {
 function PlanFree() {
   const [yearly] = useBilling();
   return (
-    <div className="rounded-2xl border p-8 text-left">
-      <div className="mb-6 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <HardDrive className="h-5 w-5 text-primary" />
-        </div>
-        <h3 className="text-2xl font-bold tracking-tight">Free</h3>
-      </div>
-      <ul className="space-y-3 text-sm">
-        <li className="flex items-start gap-2"><CheckCircle className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>100 MB storage</span></li>
-        <li className="flex items-start gap-2"><Search className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>50 searches/month <span className="text-muted-foreground">(90 premium image messages/day)</span></span></li>
-        <li className="flex items-start gap-2"><Shield className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Full encryption</span></li>
-        <li className="flex items-start gap-2"><Monitor className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Browser + Desktop</span></li>
+    <div className="rounded-lg border p-8 text-center hover:shadow-sm transition-shadow">
+      <h3 className="text-2xl font-bold tracking-tight">Free</h3>
+      <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+        <li>📦 100 MB</li>
+        <li>🔍 50 searches/month <span className="text-muted-foreground">(90 premium image messages/day)</span></li>
+        <li>🔐 Full encryption</li>
+        <li>✅ Browser + Desktop</li>
       </ul>
       <Button onClick={() => window.location.assign('/auth')} className="mt-6 w-full bg-[#8BA888] hover:bg-[#7A9777]">
         Start Free
@@ -58,24 +53,19 @@ function PlanPro() {
   const [yearly] = useBilling();
   const price = yearly ? { main: '$90', suffix: '/year', sub: 'Save 17% • Billed yearly', href: '/upgrade?plan=pro&billing=yearly' } : { main: '$9', suffix: '/mo', sub: 'Billed monthly', href: '/upgrade?plan=pro&billing=monthly' };
   return (
-    <div className="relative rounded-2xl border p-8 text-left ring-2 ring-primary/20 bg-gradient-to-b from-primary/5 to-transparent">
-      <div className="absolute -top-3 right-4 rounded-full border bg-background px-2 py-0.5 text-xs font-semibold">MOST POPULAR</div>
-      <div className="mb-6 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <Sparkles className="h-5 w-5 text-primary" />
-        </div>
-        <h3 className="text-2xl font-bold tracking-tight">Pro</h3>
+    <div className="rounded-lg border p-8 text-center hover:shadow-sm transition-shadow">
+      <h3 className="text-2xl font-bold tracking-tight">Pro</h3>
+      <div className="mt-2 text-3xl font-bold tracking-tight">
+        {price.main}
+        <span className="text-base font-medium">{price.suffix}</span>
       </div>
-      <ul className="space-y-3 text-sm">
-        <li className="flex items-start gap-2"><HardDrive className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>10 GB storage</span></li>
-        <li className="flex items-start gap-2"><Search className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>300 searches/month</span></li>
-        <li className="flex items-start gap-2"><Upload className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Bulk uploads</span></li>
-        <li className="flex items-start gap-2"><Sparkles className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Advanced features</span></li>
+      <div className="text-xs text-muted-foreground">{price.sub}</div>
+      <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+        <li>📦 10 GB</li>
+        <li>🔍 300 searches/month</li>
+        <li>📤 Bulk uploads</li>
+        <li>✅ Advanced features</li>
       </ul>
-      <div className="mt-5 text-sm">
-        <div className="text-2xl font-bold">{price.main}<span className="text-base font-medium">{price.suffix}</span></div>
-        <div className="text-muted-foreground">{price.sub}</div>
-      </div>
       <Button onClick={() => window.location.assign(price.href)} className="mt-6 w-full">
         Upgrade Now
       </Button>
