@@ -1,6 +1,6 @@
 import { httpRouter } from "convex/server";
 import { auth } from "./auth";
-import { uploadContext, batchUploadContexts, searchContexts } from "./httpApi";
+import { uploadContext, batchUploadContexts, searchContexts, premiumAnalyze, premiumHealth, fetchRemoteContext } from "./httpApi";
 import { mcpEndpoint } from "./mcp/index";
 import { oauthAuthorize, oauthToken } from "./oauth";
 import { stripeWebhook } from "./paymentsWebhook";
@@ -29,6 +29,25 @@ http.route({
   path: "/api/context/search",
   method: "POST",
   handler: searchContexts,
+});
+
+// Remote fetch endpoint for link -> context (no client download)
+http.route({
+  path: "/api/context/fetch-remote",
+  method: "POST",
+  handler: fetchRemoteContext,
+});
+
+// Premium analysis endpoint (used by desktop agent)
+http.route({
+  path: "/api/premium/analyze",
+  method: "POST",
+  handler: premiumAnalyze,
+});
+http.route({
+  path: "/api/premium/health",
+  method: "GET",
+  handler: premiumHealth,
 });
 
 // Payments webhook

@@ -52,6 +52,7 @@ export const createForUser = internalMutation({
       projectId: args.projectId,
       tagIds: args.tagIds,
       tags: args.tags,
+      type: (args as any).type,
       fileId: args.fileId,
       fileName: args.fileName,
       fileType: args.fileType,

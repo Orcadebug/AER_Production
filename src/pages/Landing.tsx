@@ -42,22 +42,18 @@ export default function Landing() {
         >
           <div className="inline-flex items-center gap-2 bg-[#8BA888]/10 border border-[#8BA888]/20 rounded-full px-4 py-2 mb-8">
             <Monitor className="h-4 w-4 text-[#8BA888]" />
-            <span className="text-sm font-medium text-[#8BA888]">Browser + Cloud today • Desktop rolling out</span>
+            <span className="text-sm font-medium text-[#8BA888]">Browser + Cloud live today – Mac desktop live; Windows soon; Linux planned</span>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight">
-            Your Context.
+            Your Context OS.
             <span className="text-[#8BA888]"> Every Platform.</span>
             <br />
             One Click Away.
           </h1>
           
-          <p className="text-lg md:text-xl text-muted-foreground mb-4 max-w-3xl mx-auto">
-            Your context is scattered: AI chats in browsers, files on desktop, notes everywhere. Nothing syncs. Nothing's searchable.
-          </p>
-          
-          <p className="text-base text-muted-foreground mb-10 max-w-3xl mx-auto">
-            Aer fixes this. Upload from desktop or browser. Search everything instantly. Access your encrypted vault on all platforms.
+          <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-3xl mx-auto">
+            Stop losing important information across browsers, desktops, and devices. Aer is the encrypted context operating system that lets you save from anywhere, search everything instantly, and access your knowledge on any platform—with end-to-end encryption and semantic AI search.
           </p>
           
           <div className="flex gap-4 justify-center flex-wrap">
@@ -69,15 +65,61 @@ export default function Landing() {
               Start Free
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button size="lg" variant="outline" className="text-lg px-8" onClick={() => navigate("/downloads")}>
-              See Platforms
+            <Button
+              size="lg"
+              variant="outline"
+              className="text-lg px-8"
+              onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}
+            >
+              See How It Works
             </Button>
           </div>
         </motion.div>
       </section>
 
+      {/* Problem Statement */}
+      <section className="container mx-auto px-4 py-16 border-t">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="max-w-5xl mx-auto"
+        >
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-8 text-center">
+            Your context is scattered. Aer brings it together.
+          </h2>
+          <div className="grid md:grid-cols-2 gap-10">
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <X className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <p>AI chats live only in your browser—lost when you close the tab</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <X className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <p>Files and PDFs buried in folders on your desktop</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <X className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <p>Notes, screenshots, and research spread across devices</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <X className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <p>Nothing syncs. Nothing's truly searchable. No privacy guarantees.</p>
+              </div>
+            </div>
+            <div className="rounded-lg border p-6 bg-muted/30">
+              <h3 className="text-lg font-semibold mb-2">Aer fixes this:</h3>
+              <p className="text-muted-foreground">
+                Upload from desktop or browser. Search everything with AI-powered semantic search. Access your encrypted vault on all platforms—desktop, web, mobile.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
       {/* How It Works Section */}
-      <section className="container mx-auto px-4 py-20 border-t">
+      <section id="how-it-works" className="container mx-auto px-4 py-20 border-t">
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -94,19 +136,28 @@ export default function Landing() {
             {
               number: "1",
               title: "Upload Anywhere",
-              description: "Desktop app for files & PDFs. Browser extension for AI chats. Works on Windows, Mac, Linux.",
+              details: [
+                "Desktop app for files, PDFs, and bulk uploads with tagging (Mac app live; Windows coming soon; Linux planned)",
+                "Browser extension auto-saves AI chats, web highlights, and pages (Chrome live; Edge compatible; Firefox planned). Right-click to insert saved context into ChatGPT, Claude, Perplexity, etc."
+              ],
               icon: Upload
             },
             {
               number: "2",
               title: "Search Everything",
-              description: "Semantic search finds anything across all sources in 2 seconds. From your desktop or phone.",
+              details: [
+                "Semantic AI search finds anything by meaning—not just keywords",
+                "Works from desktop, browser, or mobile web"
+              ],
               icon: Search
             },
             {
               number: "3",
               title: "Access Everywhere",
-              description: "Same encrypted vault on all devices. Real-time sync. Works offline. Your keys only.",
+              details: [
+                "Same encrypted vault syncs in real time across all devices",
+                "End-to-end encryption—your keys, your control"
+              ],
               icon: RefreshCw
             },
           ].map((step, index) => (
@@ -123,7 +174,18 @@ export default function Landing() {
                 </div>
                 <step.icon className="h-8 w-8 text-[#8BA888] mx-auto mb-4" />
                 <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
-                <p className="text-muted-foreground">{step.description}</p>
+                {Array.isArray((step as any).details) ? (
+                  <ul className="text-left text-muted-foreground space-y-2 max-w-xs mx-auto">
+                    {(step as any).details.map((d: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#8BA888]" />
+                        <span>{d}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted-foreground">{(step as any).description}</p>
+                )}
               </div>
             </motion.div>
           ))}
@@ -166,11 +228,7 @@ export default function Landing() {
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
-                <span>Offline mode (coming soon)</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
-                <span>Linux beta now; Windows/Mac coming soon</span>
+                <span>Mac app live; Windows coming soon; Linux planned</span>
               </li>
             </ul>
           </motion.div>
@@ -197,7 +255,7 @@ export default function Landing() {
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
-                <span>Inject context into prompts</span>
+                <span>Right-click to insert saved context into ChatGPT, Claude, Perplexity, etc.</span>
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
@@ -253,11 +311,15 @@ export default function Landing() {
           {[
             {
               title: "Research to Archive",
-              flow: "Upload PDFs on Linux desktop → Capture Claude analysis in browser → Search both on the web"
+              flow: "Upload research PDFs on desktop → Capture AI analysis in browser → Search both instantly on web or mobile"
             },
             {
               title: "Chat to Vault",
-              flow: "Record ChatGPT conversation in browser → Auto-save to Aer → Find insights on any device (web)"
+              flow: "Record ChatGPT or Claude conversation in browser → Auto-save to Aer → Find insights later on any device"
+            },
+            {
+              title: "Context on Demand",
+              flow: "Save highlights from any website → Right-click in a doc or email → Pull your context in, instantly"
             }
           ].map((useCase, idx) => (
             <motion.div
@@ -275,34 +337,80 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pricing Section (Coming Soon) */}
+      {/* Pricing */}
       <section className="container mx-auto px-4 py-20 border-t">
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          className="text-center max-w-3xl mx-auto"
+          className="text-center max-w-5xl mx-auto"
         >
           <h2 className="text-4xl font-bold tracking-tight mb-4">Pricing</h2>
-          <p className="text-lg text-muted-foreground mb-8">
-            Pricing and plans are coming soon. We’re finalizing details and will announce early-bird options shortly.
-          </p>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {["Free","Pro","Team"].map((tier, idx) => (
-              <motion.div
-                key={tier}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                viewport={{ once: true }}
-                className="rounded-lg border p-8 text-center"
-              >
-                <h3 className="text-2xl font-bold mb-2">{tier}</h3>
-                <p className="text-sm text-muted-foreground mb-6">Details coming soon</p>
-                <Button disabled variant="outline" className="w-full">Coming Soon</Button>
-              </motion.div>
-            ))}
+          <p className="text-lg text-muted-foreground mb-8">Flexible plans for individuals and teams</p>
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Free */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="rounded-lg border p-8 text-left"
+            >
+              <h3 className="text-2xl font-bold tracking-tight">Free</h3>
+              <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                <li>📦 100 MB</li>
+                <li>🔍 50 searches/month (90 premium image messages/day)</li>
+                <li>🔐 Full encryption</li>
+                <li>✅ Browser + Desktop</li>
+              </ul>
+              <Button onClick={() => navigate("/auth")} className="mt-6 w-full bg-[#8BA888] hover:bg-[#7A9777]">
+                Start Free
+              </Button>
+            </motion.div>
+            {/* Pro */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="relative rounded-lg border p-8 text-left ring-2 ring-primary/20"
+            >
+              <div className="absolute -top-3 right-4 rounded-full border bg-background px-2 py-0.5 text-xs font-semibold">MOST POPULAR</div>
+              <h3 className="text-2xl font-bold tracking-tight">Pro <span className="align-middle">⭐</span></h3>
+              <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                <li>📦 10 GB</li>
+                <li>🔍 300 searches/month</li>
+                <li>📤 Bulk uploads</li>
+                <li>✅ Advanced features</li>
+              </ul>
+              <div className="mt-4 text-sm">
+                <div className="text-2xl font-bold">$9<span className="text-base font-medium">/mo</span></div>
+                <div className="text-muted-foreground">or $90/year (Save 17%)</div>
+              </div>
+              <Button onClick={() => navigate("/upgrade?plan=pro")} className="mt-6 w-full">
+                Upgrade Now
+              </Button>
+            </motion.div>
+            {/* Max */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="rounded-lg border p-8 text-left"
+            >
+              <h3 className="text-2xl font-bold tracking-tight">Max <span className="align-middle">⚡</span></h3>
+              <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                <li>📦 100 GB</li>
+                <li>🔍 1,000 searches/month</li>
+                <li>📞 Priority support</li>
+              </ul>
+              <div className="mt-4 text-sm">
+                <div className="text-2xl font-bold">$29<span className="text-base font-medium">/mo</span></div>
+                <div className="text-muted-foreground">or $290/year (Save 17%)</div>
+              </div>
+              <Button onClick={() => navigate("/upgrade?plan=max")} variant="outline" className="mt-6 w-full">
+                Get Max
+              </Button>
+            </motion.div>
           </div>
         </motion.div>
       </section>
@@ -317,7 +425,7 @@ export default function Landing() {
           className="text-center mb-16"
         >
           <h2 className="text-4xl font-bold tracking-tight mb-4">Why Aer?</h2>
-          <p className="text-xl text-muted-foreground">The only tool with desktop + browser + cloud sync</p>
+          <p className="text-xl text-muted-foreground">The only context OS with desktop + browser + cloud sync—fully encrypted</p>
         </motion.div>
 
         <motion.div
@@ -334,21 +442,22 @@ export default function Landing() {
                 <th className="p-4 text-center font-semibold">Aer</th>
                 <th className="p-4 text-center font-semibold">Notion</th>
                 <th className="p-4 text-center font-semibold">Obsidian</th>
-                <th className="p-4 text-center font-semibold">SaveGPT</th>
               </tr>
             </thead>
             <tbody>
               {[
-                { feature: "Desktop Apps", aer: "Linux beta", notion: false, obsidian: true, savegpt: false },
-                { feature: "Browser Extension", aer: "Chrome (Edge compatible)", notion: false, obsidian: false, savegpt: true },
-                { feature: "Cloud Sync", aer: true, notion: true, obsidian: false, savegpt: true },
-                { feature: "E2E Encryption", aer: true, notion: false, obsidian: true, savegpt: false },
-                { feature: "Semantic Search", aer: true, notion: false, obsidian: false, savegpt: true },
-                { feature: "Offline Mode", aer: "Soon", notion: false, obsidian: true, savegpt: false },
+                { feature: "Web App", aer: true, notion: true, obsidian: false },
+                { feature: "Browser Extension", aer: true, notion: false, obsidian: false },
+                { feature: "AI Chat Capture", aer: true, notion: false, obsidian: false },
+                { feature: "Real-time Sync", aer: true, notion: true, obsidian: false },
+                { feature: "E2E Encryption", aer: true, notion: false, obsidian: true },
+                { feature: "AI Tagging", aer: true, notion: false, obsidian: false },
+                { feature: "Semantic Search", aer: true, notion: false, obsidian: false },
+                { feature: "Desktop Apps", aer: "Mac app", notion: true, obsidian: true },
               ].map((row: any, idx: number) => (
                 <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
                   <td className="p-4 font-medium">{row.feature}</td>
-                  {([row.aer, row.notion, row.obsidian, row.savegpt] as any[]).map((val, i) => (
+{([row.aer, row.notion, row.obsidian] as any[]).map((val, i) => (
                     <td key={i} className="p-4 text-center">
                       {typeof val === "boolean" ? (
                         val ? (
@@ -383,28 +492,32 @@ export default function Landing() {
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {[
             {
-              q: "Desktop vs browser extension?",
-              a: "Desktop app for files/PDFs. Browser extension for capturing AI chats and webpages. Use both together."
-            },
-            {
-              q: "Does it work offline?",
-              a: "Offline mode is coming soon. Today, uploads and search require connectivity; queued sync is planned."
+              q: "What's the difference between desktop and browser extension?",
+              a: "Desktop app is for uploading files, PDFs, and bulk content. Browser extension captures AI chats, webpages, and highlights. Use both together for full coverage."
             },
             {
               q: "How does cross-device sync work?",
-              a: "Real-time end-to-end encrypted sync. Your data appears instantly on all devices. Keys never leave your devices."
+              a: "Real-time end-to-end encrypted sync. Your encrypted data syncs instantly across all devices. Encryption keys never leave your devices—zero-knowledge architecture."
             },
             {
-              q: "Linux feature parity?",
-              a: "Linux desktop beta is available now. Windows and Mac apps are coming soon; feature parity will follow."
+              q: "Is the Mac desktop app available?",
+              a: "Yes — Mac desktop is live. Windows is coming soon; Linux is planned."
             },
             {
               q: "What file types are supported?",
-              a: "PDFs, Word docs, text files, images. Plus direct browser capture and paste. AI auto-tags everything."
+              a: "PDFs, Word docs, text files, images, and direct browser captures. AI auto-tags and indexes everything for instant search."
             },
             {
               q: "Can I export my data?",
-              a: "Yes. Export everything as JSON or Markdown. Your data, your keys, full control."
+              a: "Yes. Export everything as JSON or Markdown anytime. Your data, your keys, full control. No lock-in."
+            },
+            {
+              q: "How secure is Aer?",
+              a: "Military-grade end-to-end encryption. Client-side encryption means only you hold the keys. Zero-knowledge model—Aer cannot read your content."
+            },
+            {
+              q: "What platforms will Aer support?",
+              a: "Live now: Mac desktop app, Chrome extension (Edge compatible), web app. Coming soon: Windows desktop, Linux desktop, Firefox extension, mobile apps (iOS/Android)."
             }
           ].map((faq, idx) => (
             <motion.div
@@ -433,7 +546,7 @@ export default function Landing() {
         >
           <h2 className="text-4xl font-bold tracking-tight mb-2">Your Context. Every Platform. One Click Away.</h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Free tier includes web + extensions; desktop betas rolling out. No credit card required.
+            Free tier includes web + extensions; Mac desktop is live. No credit card required.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
             <Button
