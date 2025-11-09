@@ -2,11 +2,91 @@ import { motion } from "framer-motion";
 import { 
   Monitor, Smartphone, Globe, ArrowRight, Shield, Search, 
   Upload, RefreshCw, Download, Chrome, Mail, Apple, 
-  Zap, FileText, Brain, CheckCircle, X, Star, HardDrive, Sparkles, Image, LifeBuoy
+  Zap, FileText, Brain, CheckCircle, X, HardDrive, Sparkles, LifeBuoy
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { useState } from "react";
+
+function BillingToggle() {
+  const [yearly, setYearly] = useBilling();
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full border bg-card p-1">
+      <button
+        className={`rounded-full px-4 py-1.5 text-sm font-medium ${!yearly ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
+        onClick={() => setYearly(false)}
+        aria-pressed={!yearly}
+      >
+        Monthly
+      </button>
+      <button
+        className={`rounded-full px-4 py-1.5 text-sm font-medium ${yearly ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
+        onClick={() => setYearly(true)}
+        aria-pressed={yearly}
+      >
+        Yearly <span className="ml-1 text-xs text-primary">Save 17%</span>
+      </button>
+    </div>
+  );
+}
+
+function PlanFree() {
+  const [yearly] = useBilling();
+  return (
+    <div className="rounded-2xl border p-8 text-left">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+          <HardDrive className="h-5 w-5 text-primary" />
+        </div>
+        <h3 className="text-2xl font-bold tracking-tight">Free</h3>
+      </div>
+      <ul className="space-y-3 text-sm">
+        <li className="flex items-start gap-2"><CheckCircle className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>100 MB storage</span></li>
+        <li className="flex items-start gap-2"><Search className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>50 searches/month <span className="text-muted-foreground">(90 premium image messages/day)</span></span></li>
+        <li className="flex items-start gap-2"><Shield className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Full encryption</span></li>
+        <li className="flex items-start gap-2"><Monitor className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Browser + Desktop</span></li>
+      </ul>
+      <Button onClick={() => window.location.assign('/auth')} className="mt-6 w-full bg-[#8BA888] hover:bg-[#7A9777]">
+        Start Free
+      </Button>
+    </div>
+  );
+}
+
+function PlanPro() {
+  const [yearly] = useBilling();
+  const price = yearly ? { main: '$90', suffix: '/year', sub: 'Save 17% • Billed yearly', href: '/upgrade?plan=pro&billing=yearly' } : { main: '$9', suffix: '/mo', sub: 'Billed monthly', href: '/upgrade?plan=pro&billing=monthly' };
+  return (
+    <div className="relative rounded-2xl border p-8 text-left ring-2 ring-primary/20 bg-gradient-to-b from-primary/5 to-transparent">
+      <div className="absolute -top-3 right-4 rounded-full border bg-background px-2 py-0.5 text-xs font-semibold">MOST POPULAR</div>
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+          <Sparkles className="h-5 w-5 text-primary" />
+        </div>
+        <h3 className="text-2xl font-bold tracking-tight">Pro</h3>
+      </div>
+      <ul className="space-y-3 text-sm">
+        <li className="flex items-start gap-2"><HardDrive className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>10 GB storage</span></li>
+        <li className="flex items-start gap-2"><Search className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>300 searches/month</span></li>
+        <li className="flex items-start gap-2"><Upload className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Bulk uploads</span></li>
+        <li className="flex items-start gap-2"><Sparkles className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Advanced features</span></li>
+      </ul>
+      <div className="mt-5 text-sm">
+        <div className="text-2xl font-bold">{price.main}<span className="text-base font-medium">{price.suffix}</span></div>
+        <div className="text-muted-foreground">{price.sub}</div>
+      </div>
+      <Button onClick={() => window.location.assign(price.href)} className="mt-6 w-full">
+        Upgrade Now
+      </Button>
+    </div>
+  );
+}
+
+function useBilling(): [boolean, (v: boolean) => void] {
+  const [yearly, setYearly] = useState(true);
+  return [yearly, setYearly];
+}
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -347,74 +427,16 @@ export default function Landing() {
           className="text-center max-w-6xl mx-auto"
         >
           <h2 className="text-4xl font-bold tracking-tight mb-4">Pricing</h2>
-          <p className="text-lg text-muted-foreground mb-10">Flexible plans for individuals and teams</p>
+          <p className="text-lg text-muted-foreground mb-8">Flexible plans for individuals and teams</p>
 
-          {/* Plans config */}
-          <div className="grid gap-6 md:grid-cols-3">
+          {/* Billing toggle */}
+          <BillingToggle />
+
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
             {/* Free */}
-            <div className="rounded-2xl border p-8 text-left">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <HardDrive className="h-5 w-5 text-primary" />
-                </div>
-                <h3 className="text-2xl font-bold tracking-tight">Free</h3>
-              </div>
-              <ul className="space-y-3 text-sm">
-                <li className="flex items-start gap-2"><CheckCircle className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>100 MB storage</span></li>
-                <li className="flex items-start gap-2"><Search className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>50 searches/month <span className="text-muted-foreground">(90 premium image messages/day)</span></span></li>
-                <li className="flex items-start gap-2"><Shield className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Full encryption</span></li>
-                <li className="flex items-start gap-2"><Monitor className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Browser + Desktop</span></li>
-              </ul>
-              <Button onClick={() => navigate("/auth")} className="mt-6 w-full bg-[#8BA888] hover:bg-[#7A9777]">
-                Start Free
-              </Button>
-            </div>
-
+            <PlanFree />
             {/* Pro */}
-            <div className="relative rounded-2xl border p-8 text-left ring-2 ring-primary/20 bg-gradient-to-b from-primary/5 to-transparent">
-              <div className="absolute -top-3 right-4 rounded-full border bg-background px-2 py-0.5 text-xs font-semibold">MOST POPULAR</div>
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                </div>
-                <h3 className="text-2xl font-bold tracking-tight">Pro <span className="align-middle">⭐</span></h3>
-              </div>
-              <ul className="space-y-3 text-sm">
-                <li className="flex items-start gap-2"><HardDrive className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>10 GB storage</span></li>
-                <li className="flex items-start gap-2"><Search className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>300 searches/month</span></li>
-                <li className="flex items-start gap-2"><Upload className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Bulk uploads</span></li>
-                <li className="flex items-start gap-2"><Star className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Advanced features</span></li>
-              </ul>
-              <div className="mt-5 text-sm">
-                <div className="text-2xl font-bold">$9<span className="text-base font-medium">/mo</span></div>
-                <div className="text-muted-foreground">or $90/year (Save 17%)</div>
-              </div>
-              <Button onClick={() => navigate("/upgrade?plan=pro")} className="mt-6 w-full">
-                Upgrade Now
-              </Button>
-            </div>
-
-            {/* Max */}
-            <div className="rounded-2xl border p-8 text-left">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Zap className="h-5 w-5 text-primary" />
-                </div>
-                <h3 className="text-2xl font-bold tracking-tight">Max</h3>
-              </div>
-              <ul className="space-y-3 text-sm">
-                <li className="flex items-start gap-2"><HardDrive className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>100 GB storage</span></li>
-                <li className="flex items-start gap-2"><Search className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>1,000 searches/month</span></li>
-                <li className="flex items-start gap-2"><LifeBuoy className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Priority support</span></li>
-              </ul>
-              <div className="mt-5 text-sm">
-                <div className="text-2xl font-bold">$29<span className="text-base font-medium">/mo</span></div>
-                <div className="text-muted-foreground">or $290/year (Save 17%)</div>
-              </div>
-              <Button onClick={() => navigate("/upgrade?plan=max")} variant="outline" className="mt-6 w-full">
-                Get Max
-              </Button>
-            </div>
+            <PlanPro />
           </div>
         </motion.div>
       </section>
