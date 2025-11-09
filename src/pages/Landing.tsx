@@ -51,9 +51,12 @@ function PlanFree() {
 
 function PlanPro() {
   const [yearly] = useBilling();
-  const price = yearly ? { main: '$90', suffix: '/year', sub: 'Save 17% • Billed yearly', href: '/upgrade?plan=pro&billing=yearly' } : { main: '$9', suffix: '/mo', sub: 'Billed monthly', href: '/upgrade?plan=pro&billing=monthly' };
+  const price = yearly
+    ? { main: '$90', suffix: '/year', sub: 'Save 17% • Billed yearly', href: '/upgrade?plan=pro&billing=yearly' }
+    : { main: '$9', suffix: '/mo', sub: 'Billed monthly', href: '/upgrade?plan=pro&billing=monthly' };
   return (
-    <div className="rounded-lg border p-8 text-center hover:shadow-sm transition-shadow">
+    <div className="relative rounded-lg border p-8 text-center hover:shadow-sm transition-shadow">
+      <div className="absolute -top-3 right-4 rounded-full border bg-background px-2 py-0.5 text-xs font-semibold">MOST POPULAR</div>
       <h3 className="text-2xl font-bold tracking-tight">Pro</h3>
       <div className="mt-2 text-3xl font-bold tracking-tight">
         {price.main}
@@ -68,6 +71,31 @@ function PlanPro() {
       </ul>
       <Button onClick={() => window.location.assign(price.href)} className="mt-6 w-full">
         Upgrade Now
+      </Button>
+    </div>
+  );
+}
+
+function PlanMax() {
+  const [yearly] = useBilling();
+  const price = yearly
+    ? { main: '$290', suffix: '/year', sub: 'Save 17% • Billed yearly', href: '/upgrade?plan=max&billing=yearly' }
+    : { main: '$29', suffix: '/mo', sub: 'Billed monthly', href: '/upgrade?plan=max&billing=monthly' };
+  return (
+    <div className="rounded-lg border p-8 text-center hover:shadow-sm transition-shadow">
+      <h3 className="text-2xl font-bold tracking-tight">Max</h3>
+      <div className="mt-2 text-3xl font-bold tracking-tight">
+        {price.main}
+        <span className="text-base font-medium">{price.suffix}</span>
+      </div>
+      <div className="text-xs text-muted-foreground">{price.sub}</div>
+      <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+        <li>📦 100 GB</li>
+        <li>🔍 1,000 searches/month</li>
+        <li>📞 Priority support</li>
+      </ul>
+      <Button onClick={() => window.location.assign(price.href)} variant="outline" className="mt-6 w-full">
+        Get Max
       </Button>
     </div>
   );
@@ -422,11 +450,13 @@ export default function Landing() {
           {/* Billing toggle */}
           <BillingToggle />
 
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
+          <div className="mt-6 grid gap-6 md:grid-cols-3">
             {/* Free */}
             <PlanFree />
             {/* Pro */}
             <PlanPro />
+            {/* Max */}
+            <PlanMax />
           </div>
         </motion.div>
       </section>
