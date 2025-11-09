@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 from typing import Optional
 
+DEFAULT_API_URL = "https://aercarbon.com"
+
 class Config:
     def __init__(self):
         self.config_dir = Path.home() / '.aer-capture'
@@ -21,7 +23,7 @@ class Config:
     def _defaults(self) -> dict:
         return {
             'api_token': '',
-            'api_url': 'https://aercarbon.com',
+'api_url': DEFAULT_API_URL,
             'auto_ocr': True,
             'auto_send': False,
             'encryption_key': '',  # base64 32-byte key for client-side encryption
@@ -32,9 +34,14 @@ class Config:
             json.dump(self.data, f, indent=2)
     
     def get(self, key: str, default=None):
+        if key == 'api_url':
+            return DEFAULT_API_URL
         return self.data.get(key, default)
     
     def set(self, key: str, value):
+        if key == 'api_url':
+            # Prevent overriding base URL; always use default
+            return
         self.data[key] = value
         self.save()
     

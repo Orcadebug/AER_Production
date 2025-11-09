@@ -66,6 +66,49 @@ export default function Settings() {
   // Generate a simple auth token based on user ID
   const authToken = user?._id ? `aer_${user._id}` : "";
 
+  const startCheckout = async (plan: "pro" | "max", billing: "monthly" | "yearly") => {
+    try {
+      const endpoint = `${import.meta.env.VITE_CONVEX_URL}/api/pay/checkout`;
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ plan, billing }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.url) {
+        toast.error(data?.error || "Failed to start checkout");
+        return;
+      }
+      window.location.assign(data.url);
+    } catch (e) {
+      toast.error("Checkout failed");
+    }
+  };
+
+  const openBillingPortal = async () => {
+    try {
+      const endpoint = `${import.meta.env.VITE_CONVEX_URL}/api/pay/portal`;
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.url) {
+        toast.error(data?.error || "Failed to open billing portal");
+        return;
+      }
+      window.location.assign(data.url);
+    } catch (e) {
+      toast.error("Billing portal failed");
+    }
+  };
+
   // Early return if user is not loaded yet
   if (!user) {
     return (
@@ -199,15 +242,39 @@ export default function Settings() {
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Current Plan</span>
-                    <Badge variant="secondary">{user?.membershipTier || "free"}</Badge>
+                    <Badge variant="secondary">{(myUsage as any)?.tier || user?.membershipTier || "free"}</Badge>
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    Pricing and plan details will appear here once plans go live.
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" disabled>
-                      Upgrade (Coming Soon)
-                    </Button>
+                  {myUsage && (
+                    <div className="text-sm text-muted-foreground space-y-0.5">
+                      <div>AI ops this month: {myUsage.usedPerplexity}/{myUsage.allowedPerplexity}</div>
+                      <div>Searches this month: {myUsage.usedSearchesThisMonth || 0}</div>
+                      <div>Premium image analyses today: {myUsage.usedPremiumImagesToday || 0}</div>
+                      <div>Storage used: {(myUsage.storageBytes/1024/1024).toFixed(1)} MB</div>
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-2 pt-2">
+                    {(user?.membershipTier === "free" || user?.membershipTier === "beta") && (
+                      <>
+                        <div className="flex flex-wrap gap-2">
+                          <Button variant="outline" onClick={() => startCheckout("pro", "monthly")}>Upgrade to Pro (Monthly)</Button>
+                          <Button variant="outline" onClick={() => startCheckout("pro", "yearly")}>Upgrade to Pro (Yearly)</Button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button onClick={() => startCheckout("max", "monthly")}>
+                            Upgrade to Max (Monthly)
+                          </Button>
+                          <Button onClick={() => startCheckout("max", "yearly")}>
+                            Upgrade to Max (Yearly)
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                    {(((myUsage as any)?.tier === "pro") || ((myUsage as any)?.tier === "max")) && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>You're on {(myUsage as any)?.tier} — billing managed via Stripe.</span>
+                        <Button size="sm" variant="outline" onClick={openBillingPortal}>Manage billing</Button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Redeem access code */}

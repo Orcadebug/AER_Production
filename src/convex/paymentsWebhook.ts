@@ -21,12 +21,47 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
       event = JSON.parse(payload);
     }
 
+    const mapPriceToTier = (priceId: string | null | undefined): "pro" | "max" => {
+      const p = (priceId || "").trim();
+      const PRO_M = (process.env.STRIPE_PRICE_PRO_MONTHLY || "").trim();
+      const PRO_Y = (process.env.STRIPE_PRICE_PRO_YEARLY || "").trim();
+      const MAX_M = (process.env.STRIPE_PRICE_MAX_MONTHLY || "").trim();
+      const MAX_Y = (process.env.STRIPE_PRICE_MAX_YEARLY || "").trim();
+      if (p && (p === MAX_M || p === MAX_Y)) return "max";
+      return "pro"; // default
+    };
+
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         const customerId = session.customer as string | undefined;
+        const subId = (session.subscription as string) || undefined;
+        let tier: "pro" | "max" = "pro";
+        let periodEnd: number | undefined = undefined;
+        try {
+          if (subId) {
+            const subResp = await stripe.subscriptions.retrieve(subId);
+            const sub = subResp as unknown as Stripe.Subscription;
+            const defaultItem: any = (sub as any)?.items?.data?.[0];
+            const priceId: string | undefined = defaultItem?.price?.id;
+            tier = mapPriceToTier(priceId);
+            periodEnd = Number(((sub as any).current_period_end || 0)) * 1000;
+          }
+        } catch {}
         if (customerId) {
-          await ctx.runMutation(internal.paymentsInternal.setMembershipByCustomerId, { customerId, tier: "pro" });
+          await ctx.runMutation(internal.paymentsInternal.setMembershipByCustomerId, { customerId, tier, periodEnd, subscriptionId: subId });
+        }
+        break;
+      }
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        const sub = event.data.object as Stripe.Subscription;
+        const customerId = (sub as any).customer as string | undefined;
+        const defaultItem: any = (sub as any)?.items?.data?.[0];
+        const tier = mapPriceToTier(defaultItem?.price?.id);
+        const periodEnd = Number(((sub as any).current_period_end || 0)) * 1000;
+        if (customerId) {
+          await ctx.runMutation(internal.paymentsInternal.setMembershipByCustomerId, { customerId, tier, periodEnd, subscriptionId: (sub as any).id });
         }
         break;
       }
@@ -34,7 +69,7 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
         const sub = event.data.object as Stripe.Subscription;
         const customerId = sub.customer as string | undefined;
         if (customerId) {
-          await ctx.runMutation(internal.paymentsInternal.setMembershipByCustomerId, { customerId, tier: "free" });
+          await ctx.runMutation(internal.paymentsInternal.setMembershipByCustomerId, { customerId, tier: "free", periodEnd: undefined, subscriptionId: undefined });
         }
         break;
       }

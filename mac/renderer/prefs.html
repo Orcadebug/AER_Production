@@ -9,12 +9,12 @@
     .row { display: flex; gap: 8px; align-items: center; }
     input[type=text] { padding: 6px 8px; border: 1px solid #d0d0d0; border-radius: 6px; width: 280px; }
     select { padding: 6px 8px; }
-    button { appearance: none; border: 1px solid #2b85ff; background: #2b85ff; color: #fff; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+    button { appearance: none; border: 1px solid #8BA888; background: #8BA888; color: #fff; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h3>Preferences</h3>
+    <h3 style="display:flex;align-items:center;gap:8px"><img src="https://aercarbon.com/favicon.ico" alt="Aer" width="20" height="20" /> Preferences</h3>
     <div>
       <h4>Account</h4>
       <div class="row"><span>Status:</span> <span id="status">Checking…</span></div>
@@ -41,10 +41,6 @@
           <option value="premium">Premium</option>
         </select>
       </div>
-      <div class="row">
-        <label>Base URL:</label>
-        <input type="text" id="baseURL" placeholder="https://aercarbon.com" />
-      </div>
       <div class="row" style="margin-top:10px;"><button id="save">Save</button></div>
     </div>
   </div>
@@ -53,13 +49,11 @@
       const prefs = await window.aer.getPrefs();
       document.getElementById('status').textContent = prefs.connected ? 'Connected' : 'Not connected';
       document.getElementById('defaultAction').value = prefs.defaultAction || 'basic';
-      document.getElementById('baseURL').value = prefs.baseURL || 'https://aercarbon.com';
     }
     refresh();
     document.getElementById('save').onclick = async () => {
       await window.aer.setPrefs({
-        defaultAction: document.getElementById('defaultAction').value,
-        baseURL: document.getElementById('baseURL').value
+        defaultAction: document.getElementById('defaultAction').value
       });
       window.close();
     };

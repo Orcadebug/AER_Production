@@ -45,3 +45,26 @@ export const createCheckoutSession: any = action({
   },
 });
 
+export const createBillingPortal: any = action({
+  args: {
+    userId: v.id("users"),
+    returnUrl: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ url: string | null }> => {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error("Stripe not configured");
+    }
+    const user: any = await ctx.runQuery(internal.users.getUserById, { userId: args.userId });
+    if (!user) throw new Error("Unauthorized");
+    const customerId = (user as any).stripeCustomerId as string | undefined;
+    if (!customerId) throw new Error("No Stripe customer on file");
+
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+    const session: any = await (stripe as any).billingPortal.sessions.create({
+      customer: customerId,
+      return_url: args.returnUrl,
+    });
+    return { url: session.url ?? null };
+  },
+});
+

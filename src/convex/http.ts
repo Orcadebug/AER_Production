@@ -69,6 +69,18 @@ http.route({
   handler: createProCheckout,
 });
 
+// Billing portal
+http.route({
+  path: "/api/pay/portal",
+  method: "OPTIONS",
+  handler: require("./payApi").portalOptions,
+});
+http.route({
+  path: "/api/pay/portal",
+  method: "POST",
+  handler: require("./payApi").createBillingPortal,
+});
+
 // MCP endpoint for AI assistants
 http.route({
   path: "/api/mcp",

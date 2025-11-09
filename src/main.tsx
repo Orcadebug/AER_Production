@@ -17,6 +17,7 @@ import Support from "./pages/Support.tsx";
 import OAuthConsent from "./pages/OAuthConsent.tsx";
 import PasswordReset from "./pages/PasswordReset.tsx";
 import Downloads from "./pages/Downloads.tsx";
+import Upgrade from "./pages/Upgrade.tsx";
 import "./types/global.d.ts";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
@@ -36,6 +37,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />
             <Route path="/password-reset" element={<PasswordReset />} />
             <Route path="/downloads" element={<Downloads />} />
+            <Route path="/upgrade" element={<Upgrade />} />
             <Route path="/oauth/consent" element={<OAuthConsent />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -34,11 +34,14 @@ const schema = defineSchema(
           v.literal("free"),
           v.literal("beta"),
           v.literal("pro"),
+          v.literal("max"),
           v.literal("owner")
         )
       ),
       stripeCustomerId: v.optional(v.string()),
       stripeSubscriptionId: v.optional(v.string()),
+      // Membership period end (epoch ms). If present and in the past, treat as free.
+      membershipPeriodEnd: v.optional(v.number()),
       // Encryption key metadata (not the actual key - stored client-side only)
       encryptionKeyVersion: v.optional(v.number()),
       lastKeyRotation: v.optional(v.number()),
@@ -114,8 +117,16 @@ const schema = defineSchema(
       userId: v.id("users"),
       monthStart: v.number(), // epoch ms at start of month
       perplexityCalls: v.number(),
+      searchRequests: v.number(),
       storageBytes: v.number(),
     }).index("by_user_month", ["userId", "monthStart"]),
+
+    // Daily usage tracking for premium image analyses
+    daily_usage: defineTable({
+      userId: v.id("users"),
+      dayStart: v.number(), // epoch ms at start of day (00:00 local)
+      premiumImages: v.number(),
+    }).index("by_user_day", ["userId", "dayStart"]),
 
     // Feedback and support tickets
     feedback: defineTable({

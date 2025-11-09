@@ -595,10 +595,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       try {
         const query = (request.query || '').toString().trim();
         if (!query || query.length < 3) return sendResponse({ success: true, results: [] });
-        const storage = await chrome.storage.local.get(['authToken', 'token', 'apiUrl', 'apiBaseUrl']);
-        const authToken = storage.authToken || storage.token || API_TOKEN;
-        if (!authToken) throw new Error('No auth token');
-        const apiBase = storage.apiUrl || storage.apiBaseUrl || DEFAULT_API_BASE;
+      const storage = await chrome.storage.local.get(['authToken', 'token', 'apiUrl', 'apiBaseUrl']);
+      const authToken = storage.authToken || storage.token || API_TOKEN;
+      const apiBase = storage.apiUrl || storage.apiBaseUrl || DEFAULT_API_BASE;
         const userId = authToken.startsWith('aer_') ? authToken.substring(4) : '';
         const { results } = await semanticSearch(query, authToken, apiBase, 30);
         const ranked = rankByRelevance(query, results).slice(0, 15);
@@ -824,7 +823,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       query = (query || '').toString().slice(0, 500);
 
       // Get auth + api base
-      const storage = await chrome.storage.local.get(['authToken', 'token', 'apiUrl', 'apiBaseUrl']);
+      const storage = await chrome.storage.local.get(['authToken', 'token']);
       const authToken = storage.authToken || storage.token || API_TOKEN;
       if (!authToken) {
         chrome.notifications.create({

@@ -269,14 +269,20 @@ function buildAssistPopup({ results, userId, query }) {
         return;
       }
 
-      // Compose helpful header
+      // Compose helpful header including title/url/tags
       const header = [];
+      if (item.title) header.push(`Title: ${item.title}`);
       if (item.url) header.push(`URL: ${item.url}`);
       if (Array.isArray(item.tags) && item.tags.length) header.push(`Tags: ${item.tags.join(', ')}`);
       const headerBlock = header.length ? header.join('\n') + '\n\n' : '';
 
       const prefix = query && query.length ? `${query}\n\n` : '';
-      const payload = `${prefix}Context from Aer — Full content\n${headerBlock}${full}`.trim();
+
+      // Always include summary (when available) and full content
+      const summaryBlock = summary ? `Summary\n${summary}\n\n` : '';
+      const contentBlock = `Content\n${full}`;
+
+      const payload = `${prefix}Context from Aer\n${headerBlock}${summaryBlock}${contentBlock}`.trim();
       const target = lastFocusedEl || getActiveEditable();
       const ok = insertTextAtCursor(target, payload);
       if (ok) {

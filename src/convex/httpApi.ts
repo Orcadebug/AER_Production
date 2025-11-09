@@ -407,6 +407,9 @@ export const searchContexts = httpAction(async (ctx, request) => {
     // Get all contexts once
     const allContexts: any[] = await ctx.runQuery(internal.contextsInternal.getAllContextsForUser, { userId });
 
+    // Increment monthly search counter
+    try { await ctx.runMutation(internal.entitlements.incrementSearchCount, { userId, amount: 1 }); } catch {}
+
     // If no query, return recent contexts with tags
     if (!query || String(query).trim().length === 0) {
       const recent = allContexts
@@ -740,6 +743,8 @@ OUTPUT STRUCTURE
 
     // Increment monthly usage on success
     try { await ctx.runMutation(internal.entitlements.incrementPerplexity, { userId, amount: 1 }); } catch {}
+    // Increment daily premium image analyses
+    try { await ctx.runMutation(internal.entitlements.incrementDailyPremiumImages, { userId, amount: 1 }); } catch {}
 
     return new Response(
       JSON.stringify({ insights: analysis }),

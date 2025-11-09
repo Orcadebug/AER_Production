@@ -29,6 +29,48 @@ export const checkoutOptions = httpAction(async (_ctx, req) => {
   });
 });
 
+export const createBillingPortal = httpAction(async (ctx, req) => {
+  try {
+    const origin = req.headers.get("Origin");
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...buildCorsHeaders(origin) },
+      });
+    }
+    const token = authHeader.substring(7);
+    if (!token.startsWith("aer_")) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...buildCorsHeaders(origin) },
+      });
+    }
+    const userId = token.substring(4) as any;
+    if (!process.env.STRIPE_SECRET_KEY || !process.env.SITE_URL) {
+      return new Response(JSON.stringify({ error: "Stripe not configured for this deployment" }), {
+        status: 501,
+        headers: { "Content-Type": "application/json", ...buildCorsHeaders(origin) },
+      });
+    }
+
+    const url = await ctx.runAction((api as any).payments.createBillingPortal, {
+      userId,
+      returnUrl: `${process.env.SITE_URL || ''}/settings?billing=portal`,
+    });
+    return new Response(JSON.stringify(url), { status: 200, headers: { "Content-Type": "application/json", ...buildCorsHeaders(origin) } });
+  } catch {
+    const origin = req.headers.get("Origin");
+    return new Response(JSON.stringify({ error: "Portal failed" }), { status: 500, headers: { "Content-Type": "application/json", ...buildCorsHeaders(origin) } });
+  }
+});
+
+// Preflight handler for portal endpoint
+export const portalOptions = httpAction(async (_ctx, req) => {
+  const origin = req.headers.get("Origin");
+  return new Response(null, { status: 204, headers: buildCorsHeaders(origin) });
+});
+
 // Simple API wrapper to create Stripe checkout without exposing secrets client-side
 export const createProCheckout = httpAction(async (ctx, req) => {
   try {
@@ -50,9 +92,19 @@ export const createProCheckout = httpAction(async (ctx, req) => {
     }
     const userId = token.substring(4) as any;
 
-    // Fail fast if Stripe is not configured on this deployment
-    if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_PRICE_PRO || !process.env.SITE_URL) {
-      return new Response(JSON.stringify({ error: "Stripe not configured for this deployment" }), {
+    const body = await req.json().catch(() => ({ plan: "pro", billing: "monthly" }));
+    const plan = String(body?.plan || "pro").toLowerCase(); // "pro" | "max"
+    const billing = String(body?.billing || "monthly").toLowerCase(); // "monthly" | "yearly"
+
+    const keyName = (() => {
+      const p = plan === "max" ? "MAX" : "PRO";
+      const b = billing === "yearly" ? "YEARLY" : "MONTHLY";
+      return `STRIPE_PRICE_${p}_${b}` as const;
+    })();
+
+    const priceId = (process.env as any)[keyName] as string | undefined;
+    if (!process.env.STRIPE_SECRET_KEY || !priceId || !process.env.SITE_URL) {
+      return new Response(JSON.stringify({ error: "Stripe not configured for this plan" }), {
         status: 501,
         headers: { "Content-Type": "application/json", ...buildCorsHeaders(origin) },
       });
@@ -60,7 +112,7 @@ export const createProCheckout = httpAction(async (ctx, req) => {
 
     const url = await ctx.runAction((api as any).payments.createCheckoutSession, {
       userId,
-      priceId: process.env.STRIPE_PRICE_PRO as string,
+      priceId,
       successUrl: `${process.env.SITE_URL || ''}/settings?upgrade=success`,
       cancelUrl: `${process.env.SITE_URL || ''}/settings?upgrade=cancel`,
     });

@@ -26,12 +26,8 @@ class SettingsDialog(QDialog):
         self.token_input.setPlaceholderText("aer_xxxxxxx")
         layout.addWidget(self.token_input)
         
-        # API URL
-        layout.addWidget(QLabel("API URL:"))
-        self.url_input = QLineEdit()
-        self.url_input.setText(self.config.get('api_url', ''))
-        self.url_input.setPlaceholderText("https://aercarbon.com")
-        layout.addWidget(self.url_input)
+        # Base URL (fixed)
+        layout.addWidget(QLabel("Base URL: https://aercarbon.com (default)"))
         
         # Auto OCR
         self.auto_ocr_check = QCheckBox("Auto-extract text from screenshots (OCR)")
@@ -87,16 +83,12 @@ class SettingsDialog(QDialog):
             QMessageBox.warning(self, "Validation Error", "API token cannot be empty")
             return
         
-        if not url:
-            QMessageBox.warning(self, "Validation Error", "API URL cannot be empty")
-            return
         
         if not enc_key:
             QMessageBox.warning(self, "Validation Error", "Encryption key is required (click Generate if empty)")
             return
         
         self.config.set('api_token', token)
-        self.config.set('api_url', url)
         self.config.set('auto_ocr', self.auto_ocr_check.isChecked())
         self.config.set('encryption_key', enc_key)
         

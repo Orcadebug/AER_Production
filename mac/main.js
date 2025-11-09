@@ -18,7 +18,8 @@ let prefsWin = null;
 let lastCaptureBuffer = null;
 let connectedState = false;
 
-const DEFAULT_BASE_URL = 'https://aercarbon.com';
+const DEFAULT_BASE_URL = 'https://honorable-porpoise-222.convex.site';
+const UI_SITE_URL = 'https://aercarbon.com';
 
 function setTrayTitleFallback(t) {
   try { tray.setTitle(t); } catch {}
@@ -46,7 +47,7 @@ function buildMenu() {
       click: () => beginCapture('premium')
     },
     { type: 'separator' },
-    { label: 'View in Aer', click: () => shell.openExternal(DEFAULT_BASE_URL) },
+    { label: 'View in Aer', click: () => shell.openExternal(UI_SITE_URL) },
     { label: 'Preferences…', accelerator: 'CommandOrControl+,', click: showPrefs },
     ...(connected ? [{ label: 'Sign out', click: async () => { await clearToken(); connectedState = false; rebuildUI(); } }] : []),
     { type: 'separator' },
@@ -190,7 +191,7 @@ async function runPremium(imageBuffer) {
   overlayWin?.webContents.send('flow:update', { stage: 'processing', title: 'Preparing analysis …', subtitle: 'Analyzing with AI in the cloud' });
   try {
     const token = await getToken();
-    const baseURL = store.get('baseURL', DEFAULT_BASE_URL);
+    const baseURL = DEFAULT_BASE_URL;
     const insights = await analyzePremium(imageBuffer, token, baseURL);
     if (typeof insights === 'string') {
       const text = insights;
@@ -221,7 +222,7 @@ async function continueEncryptAndUpload(payloadBuffer, analysisType, previewPlai
       sealed,
       analysisType,
       token,
-      baseURL: store.get('baseURL', DEFAULT_BASE_URL),
+      baseURL: DEFAULT_BASE_URL,
       previewPlaintext
     });
     overlayWin?.webContents.send('flow:update', { stage: 'done', title: 'Done', subtitle: 'Finalizing: deleting local screenshot.' });
@@ -258,16 +259,15 @@ function setupIPC() {
     if (which === 'basic') return runBasic(Buffer.from(lastCaptureBuffer));
     if (which === 'premium') return runPremium(Buffer.from(lastCaptureBuffer));
   });
-  ipcMain.handle('overlay:view-in-aer', async () => { const u = store.get('lastUploadURL', DEFAULT_BASE_URL); shell.openExternal(u); });
+  ipcMain.handle('overlay:view-in-aer', async () => { shell.openExternal(UI_SITE_URL); });
   ipcMain.handle('overlay:change-default', async () => showPrefs());
   ipcMain.handle('prefs:get', async () => ({
     connected: connectedState,
     defaultAction: store.get('defaultAction', 'basic'),
-    baseURL: store.get('baseURL', DEFAULT_BASE_URL)
+    baseURL: DEFAULT_BASE_URL
   }));
   ipcMain.handle('prefs:set', async (_e, data) => {
     if (data.defaultAction) store.set('defaultAction', data.defaultAction);
-    if (typeof data.baseURL === 'string') store.set('baseURL', data.baseURL);
     rebuildUI();
     return true;
   });
