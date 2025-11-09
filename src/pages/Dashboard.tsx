@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Id } from "@/convex/_generated/dataModel";
 import { extractTextFromPDF, isPDF } from "@/lib/pdfExtractor";
+import { extractTextFromDOCX, isDOCX } from "@/lib/docxExtractor";
 import { internal } from "@/convex/_generated/api";
 
 export default function Dashboard() {
@@ -256,40 +257,40 @@ export default function Dashboard() {
       });
       const { storageId } = await result.json();
 
-      // Route DOCX through server extractor for robust text parsing
-      const isDocx = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.toLowerCase().endsWith('.docx');
-      if (isDocx) {
+      // Extract text content from DOCX/PDF files on the client (E2E)
+      let fileContent = `Uploaded file: ${file.name}`;
+      let fileSummary = `File uploaded: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+
+      if (isDOCX(file)) {
         try {
-          const convexUrl = (import.meta as any).env?.VITE_CONVEX_URL as string;
-          if (!convexUrl) throw new Error('Missing VITE_CONVEX_URL');
-          const resp = await fetch(`${convexUrl}/api/context/upload`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer aer_${user!._id}`,
-            },
-            body: JSON.stringify({
-              storageId,
-              fileType: file.type,
-              fileName: file.name,
-              title: file.name.substring(0, 80),
-            }),
-          });
-          if (!resp.ok) {
-            const txt = await resp.text().catch(()=>"");
-            throw new Error(`Upload API failed: ${resp.status} ${txt}`);
+          const extracted = await extractTextFromDOCX(file);
+          if (extracted && extracted.trim().length > 0) {
+            fileContent = extracted;
+            const preview = extracted.substring(0, 200).trim();
+            fileSummary = preview.length < extracted.length ? `${preview}...` : preview;
           }
-          toast.success("File uploaded successfully");
-          return;
         } catch (err) {
-          console.error('DOCX server upload failed, falling back to client path:', err);
-          toast.warning('DOCX text extraction failed server-side, storing metadata only');
+          console.error("DOCX text extraction failed:", err);
+          toast.warning("Could not extract text from DOCX, storing file metadata only");
         }
       }
 
-      // Extract text content from PDF files (client-side E2E)
-      let fileContent = `Uploaded file: ${file.name}`;
-      let fileSummary = `File uploaded: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+      if (isPDF(file)) {
+        try {
+          const extractedText = await extractTextFromPDF(file);
+          if (extractedText && extractedText.trim().length > 0) {
+            fileContent = extractedText;
+            // Create a better summary for PDFs with content
+            const preview = extractedText.substring(0, 200).trim();
+            fileSummary = preview.length < extractedText.length 
+              ? `${preview}...` 
+              : preview;
+          }
+        } catch (error) {
+          console.error("PDF text extraction failed:", error);
+          toast.warning("Could not extract text from PDF, storing file metadata only");
+        }
+      }
       
       if (isPDF(file)) {
         try {

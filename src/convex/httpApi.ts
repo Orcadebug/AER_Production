@@ -2,7 +2,6 @@ import { httpAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { serverEncryptString, serverDecryptString } from "./crypto";
-import mammoth from "mammoth";
 
 function detectSourceTagFromUrl(urlRaw: string | null | undefined): string | null {
   if (!urlRaw) return null;
@@ -88,32 +87,7 @@ export const uploadContext = httpAction(async (ctx, request) => {
     // Accept either encrypted or plaintext payloads; optionally summary-only
     let { encryptedContent, encryptedTitle, encryptedMetadata, encryptedSummary, tags, content, plaintext, summaryOnly, title, storageId, fileType, fileName } = body || {};
 
-    // If caller passed a DOCX storageId and no plaintext/content, extract text server-side
-    try {
-      const isDocx = (fileType && typeof fileType === 'string' && fileType.includes('officedocument.wordprocessingml.document')) ||
-                     (fileName && typeof fileName === 'string' && fileName.toLowerCase().endsWith('.docx'));
-      if (!encryptedContent && !plaintext && !content && storageId && isDocx) {
-        const url = await ctx.storage.getUrl(storageId as any);
-        if (url) {
-          const resp = await fetch(url);
-          if (resp.ok) {
-            const arrayBuffer = await resp.arrayBuffer();
-            try {
-              const result = await mammoth.extractRawText({ arrayBuffer });
-              const txt = (result.value || '').trim();
-              if (txt) {
-                plaintext = txt;
-                // If title missing, derive from first line
-                if (!title || typeof title !== 'string' || title.trim().length === 0) {
-                  const first = txt.split(/\n|\.\s/)[0] || txt;
-                  title = first.slice(0, 80);
-                }
-              }
-            } catch {}
-          }
-        }
-      }
-    } catch {}
+    // Client handles DOCX extraction for E2E; server no-op here
 
     // Branch: summaryOnly flow
     if (summaryOnly) {
