@@ -417,25 +417,41 @@ export default function Dashboard() {
     return context.title;
   };
 
-  // Decrypt context summary for preview (not full content)
-  const getDecryptedSummary = (context: any) => {
+  // Summary preview (feed/cards): clamp to ~150 chars
+  const getSummaryPreview = (context: any) => {
+    const clamp = (s: string) => (s.length > 150 ? s.slice(0, 150) + "..." : s);
     if (context.encryptedSummary) {
       // If server provided a "plain" envelope, show it directly without decrypting
       if (context.encryptedSummary.nonce === 'plain') {
         const t = String(context.encryptedSummary.ciphertext || '');
-        return t.length > 0 ? (t.length > 150 ? t.slice(0,150) + '...' : t) : '';
+        return t ? clamp(t) : '';
+      }
+      const decrypted = decrypt(context.encryptedSummary);
+      if (decrypted) return clamp(decrypted);
+      const s = serverSummaryById[context._id];
+      if (s) return clamp(s);
+      const fallback = serverPlainById[context._id];
+      if (fallback) return clamp(fallback);
+      return "";
+    }
+    return `${context.type === "file" ? "File" : "Note"} - No preview available`;
+  };
+
+  // Full summary (detail dialog): do NOT truncate
+  const getFullSummary = (context: any) => {
+    if (context.encryptedSummary) {
+      if (context.encryptedSummary.nonce === 'plain') {
+        return String(context.encryptedSummary.ciphertext || '');
       }
       const decrypted = decrypt(context.encryptedSummary);
       if (decrypted) return decrypted;
       const s = serverSummaryById[context._id];
-      if (s) return (s.length > 150 ? s.slice(0,150) + '...' : s) || '';
+      if (s) return s;
       const fallback = serverPlainById[context._id];
-      if (fallback) return (fallback.length > 150 ? fallback.slice(0, 150) + "..." : fallback) || "";
-      // If we can't decrypt and have no fallback yet, show nothing
+      if (fallback) return fallback;
       return "";
     }
-    // Fallback to showing type if no summary
-    return `${context.type === "file" ? "File" : "Note"} - No preview available`;
+    return "";
   };
 
   const handleCopySummary = (context: any) => {
@@ -729,7 +745,7 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground line-clamp-3">
-                    {getDecryptedSummary(context)}
+                    {getSummaryPreview(context)}
                   </p>
                   {context.type === "file" && context.fileType && (
                     <Badge variant="secondary" className="mt-2 text-xs">
@@ -798,7 +814,7 @@ export default function Dashboard() {
                   <div>
                     <h4 className="text-sm font-semibold mb-2">Summary</h4>
                     <div className="bg-muted p-4 rounded-lg whitespace-pre-wrap text-sm">
-                      {getDecryptedSummary(selectedContext)}
+                      {getFullSummary(selectedContext)}
                     </div>
                   </div>
                 )}
