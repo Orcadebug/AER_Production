@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Aer Overlay</title>
+  <style>
+    html, body { margin: 0; padding: 0; font-family: -apple-system, system-ui, Helvetica, Arial; background: transparent; }
+    .panel { width: 360px; margin: 10px; padding: 12px 14px; border-radius: 12px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); background: rgba(28,28,30,0.78); color: #fff; -webkit-app-region: drag; }
+    .title { font-weight: 700; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; opacity: 0.85; margin-bottom: 10px; }
+    .row { display: flex; gap: 8px; }
+    button { -webkit-app-region: no-drag; appearance: none; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); color: #fff; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+    button.primary { background: #2b85ff; border-color: #2b85ff; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    .links { margin-top: 8px; display: flex; gap: 12px; font-size: 12px; }
+    a { color: #9ecbff; text-decoration: none; -webkit-app-region: no-drag; }
+    .anchors { position: absolute; inset: 0; pointer-events: none; }
+    .anchor { position: absolute; width: 6px; height: 6px; background: #4DA3FF; border-radius: 3px; opacity: 0.9; }
+    .anchor.tl { top: 2px; left: 2px; }
+    .anchor.tr { top: 2px; right: 2px; }
+    .anchor.bl { bottom: 2px; left: 2px; }
+    .anchor.br { bottom: 2px; right: 2px; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <div class="title" id="title">Select export method.</div>
+    <div class="subtitle" id="subtitle">Processed transiently, then uploaded; the screenshot is deleted after upload or failure.</div>
+    <div class="row">
+      <button class="primary" id="btnBasic">Upload Basic to Aer (Free)</button>
+      <button class="primary" id="btnPremium">Upload Premium to Aer (Uses Credits)</button>
+    </div>
+    <div class="links">
+      <a href="#" id="viewAer">View in Aer</a>
+      <a href="#" id="changeDefault">Change default action</a>
+      <div style="flex:1"></div>
+      <a href="#" id="close">Close</a>
+    </div>
+  </div>
+  <div class="anchors">
+    <div class="anchor tl"></div>
+    <div class="anchor tr"></div>
+    <div class="anchor bl"></div>
+    <div class="anchor br"></div>
+  </div>
+  <script>
+    const titleEl = document.getElementById('title');
+    const subEl = document.getElementById('subtitle');
+    const btnBasic = document.getElementById('btnBasic');
+    const btnPremium = document.getElementById('btnPremium');
+
+    window.aer.onFlowUpdate(({ title, subtitle, stage }) => {
+      if (title) titleEl.textContent = title;
+      if (subtitle) subEl.textContent = subtitle;
+      const disabled = stage === 'uploading' || stage === 'processing';
+      btnBasic.disabled = disabled;
+      btnPremium.disabled = disabled;
+    });
+
+    window.aer.onChooser(() => {
+      titleEl.textContent = 'Select export method.';
+      subEl.textContent = 'Processed transiently, then uploaded; the screenshot is deleted after upload or failure.';
+      btnBasic.disabled = false; btnPremium.disabled = false;
+    });
+
+    document.getElementById('viewAer').onclick = (e) => { e.preventDefault(); window.aer.viewInAer(); };
+    document.getElementById('changeDefault').onclick = (e) => { e.preventDefault(); window.aer.changeDefault(); };
+    document.getElementById('close').onclick = (e) => { e.preventDefault(); window.aer.closePanel(); };
+
+    btnBasic.onclick = () => window.aer.choose('basic');
+    btnPremium.onclick = () => window.aer.choose('premium');
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+ignoredBuiltDependencies:
+  - active-win
+  - electron
+  - keytar
+  - sharp
+  - tesseract.js
