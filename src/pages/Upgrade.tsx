@@ -25,7 +25,8 @@ export default function Upgrade() {
       try {
         setBusy(true);
         const token = `aer_${user._id}`;
-        const endpoint = `${import.meta.env.VITE_CONVEX_URL}/api/pay/checkout`;
+        const convexBase = (import.meta.env.VITE_CONVEX_SITE_URL as string) || (import.meta.env.VITE_CONVEX_URL as string)?.replace(".cloud", ".site");
+        const endpoint = `${convexBase}/api/pay/checkout`;
         const res = await fetch(endpoint, {
           method: "POST",
           headers: {

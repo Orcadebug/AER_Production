@@ -5,7 +5,8 @@
   "installCommand": "pnpm install",
   "devCommand": "pnpm dev",
   "env": {
-    "VITE_CONVEX_URL": "https://honorable-porpoise-222.convex.cloud"
+    "VITE_CONVEX_URL": "https://honorable-porpoise-222.convex.cloud",
+    "VITE_CONVEX_SITE_URL": "https://honorable-porpoise-222.convex.site"
   },
   "rewrites": [
     {

@@ -68,7 +68,8 @@ export default function Settings() {
 
   const startCheckout = async (plan: "pro" | "max", billing: "monthly" | "yearly") => {
     try {
-      const endpoint = `${import.meta.env.VITE_CONVEX_URL}/api/pay/checkout`;
+      const convexBase = (import.meta.env.VITE_CONVEX_SITE_URL as string) || (import.meta.env.VITE_CONVEX_URL as string)?.replace(".cloud", ".site");
+      const endpoint = `${convexBase}/api/pay/checkout`;
       const res = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -90,7 +91,8 @@ export default function Settings() {
 
   const openBillingPortal = async () => {
     try {
-      const endpoint = `${import.meta.env.VITE_CONVEX_URL}/api/pay/portal`;
+      const convexBase = (import.meta.env.VITE_CONVEX_SITE_URL as string) || (import.meta.env.VITE_CONVEX_URL as string)?.replace(".cloud", ".site");
+      const endpoint = `${convexBase}/api/pay/portal`;
       const res = await fetch(endpoint, {
         method: "POST",
         headers: {
