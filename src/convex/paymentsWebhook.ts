@@ -21,14 +21,23 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
       event = JSON.parse(payload);
     }
 
-    const mapPriceToTier = (priceId: string | null | undefined): "pro" | "max" => {
-      const p = (priceId || "").trim();
-      const PRO_M = (process.env.STRIPE_PRICE_PRO_MONTHLY || "").trim();
-      const PRO_Y = (process.env.STRIPE_PRICE_PRO_YEARLY || "").trim();
-      const MAX_M = (process.env.STRIPE_PRICE_MAX_MONTHLY || "").trim();
-      const MAX_Y = (process.env.STRIPE_PRICE_MAX_YEARLY || "").trim();
-      if (p && (p === MAX_M || p === MAX_Y)) return "max";
-      return "pro"; // default
+    const mapPriceOrProductToTier = (price: Stripe.Price | null | undefined): "pro" | "max" => {
+      try {
+        const priceId = (price as any)?.id as string | undefined;
+        const productId = typeof (price as any)?.product === 'string' ? ((price as any).product as string) : (((price as any)?.product as any)?.id as string | undefined);
+        const PRO_M = (process.env.STRIPE_PRICE_PRO_MONTHLY || "").trim();
+        const PRO_Y = (process.env.STRIPE_PRICE_PRO_YEARLY || "").trim();
+        const MAX_M = (process.env.STRIPE_PRICE_MAX_MONTHLY || "").trim();
+        const MAX_Y = (process.env.STRIPE_PRICE_MAX_YEARLY || "").trim();
+        const PRO_PROD = (process.env.STRIPE_PRODUCT_PRO || "").trim();
+        const MAX_PROD = (process.env.STRIPE_PRODUCT_MAX || "").trim();
+        if (productId && MAX_PROD && productId === MAX_PROD) return "max";
+        if (productId && PRO_PROD && productId === PRO_PROD) return "pro";
+        if (priceId && (priceId === MAX_M || priceId === MAX_Y)) return "max";
+        return "pro";
+      } catch {
+        return "pro";
+      }
     };
 
     switch (event.type) {
@@ -43,8 +52,7 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
             const subResp = await stripe.subscriptions.retrieve(subId);
             const sub = subResp as unknown as Stripe.Subscription;
             const defaultItem: any = (sub as any)?.items?.data?.[0];
-            const priceId: string | undefined = defaultItem?.price?.id;
-            tier = mapPriceToTier(priceId);
+            tier = mapPriceOrProductToTier(defaultItem?.price as any);
             periodEnd = Number(((sub as any).current_period_end || 0)) * 1000;
           }
         } catch {}
@@ -58,7 +66,7 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
         const sub = event.data.object as Stripe.Subscription;
         const customerId = (sub as any).customer as string | undefined;
         const defaultItem: any = (sub as any)?.items?.data?.[0];
-        const tier = mapPriceToTier(defaultItem?.price?.id);
+        const tier = mapPriceOrProductToTier(defaultItem?.price as any);
         const periodEnd = Number(((sub as any).current_period_end || 0)) * 1000;
         if (customerId) {
           await ctx.runMutation(internal.paymentsInternal.setMembershipByCustomerId, { customerId, tier, periodEnd, subscriptionId: (sub as any).id });
