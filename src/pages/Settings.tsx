@@ -253,7 +253,7 @@ export default function Settings() {
                     </div>
                   )}
                   <div className="flex flex-col gap-2 pt-2">
-                    {(user?.membershipTier === "free" || user?.membershipTier === "beta") && (
+                    {(((myUsage as any)?.tier || user?.membershipTier || "free") !== "owner") && (
                       <div className="flex flex-wrap gap-2">
                         <Button onClick={() => navigate("/pricing")}>View Pricing & Upgrade</Button>
                       </div>

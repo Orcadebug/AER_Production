@@ -48,6 +48,7 @@ function PlanFree() {
 }
 
 function PlanPro({ yearly }: { yearly: boolean }) {
+  const navigate = useNavigate();
   const price = yearly
     ? { main: '$90', suffix: '/year', sub: 'Billed yearly • Save 17%', href: '/upgrade?plan=pro&billing=yearly' }
     : { main: '$10', suffix: '/mo', sub: 'Billed monthly', href: '/upgrade?plan=pro&billing=monthly' };
@@ -74,6 +75,7 @@ function PlanPro({ yearly }: { yearly: boolean }) {
 }
 
 function PlanMax({ yearly }: { yearly: boolean }) {
+  const navigate = useNavigate();
   const price = yearly
     ? { main: '$290', suffix: '/year', sub: 'Billed yearly • Save 17%', href: '/upgrade?plan=max&billing=yearly' }
     : { main: '$25', suffix: '/mo', sub: 'Billed monthly', href: '/upgrade?plan=max&billing=monthly' };
