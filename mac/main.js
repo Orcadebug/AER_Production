@@ -9,6 +9,8 @@ const { runOCR } = require('./utils/ocr');
 const { analyzePremium } = require('./utils/premium');
 const { encryptBuffer, ensureKey } = require('./utils/encryption');
 const { uploadEncrypted } = require('./utils/uploader');
+let autoUpdater = null;
+try { ({ autoUpdater } = require('electron-updater')); } catch {}
 
 const store = new Store({ name: 'settings' });
 let tray;
@@ -51,6 +53,7 @@ function buildMenu() {
     { label: 'Preferences…', accelerator: 'CommandOrControl+,', click: showPrefs },
     ...(connected ? [{ label: 'Sign out', click: async () => { await clearToken(); connectedState = false; rebuildUI(); } }] : []),
     { type: 'separator' },
+    { label: 'Check for Updates…', click: () => checkForUpdatesManual() },
     { label: 'Quit', accelerator: 'CommandOrControl+Q', click: () => app.quit() }
   ]);
   tray.setContextMenu(menu);
@@ -286,11 +289,40 @@ function onOnlineChange(online) {
   rebuildUI();
 }
 
+function setupAutoUpdates() {
+  if (!app.isPackaged) return;
+  if (!autoUpdater) return; // updater not available in dev or not installed
+  try {
+    autoUpdater.autoDownload = true;
+    const feed = process.env.UPDATE_FEED_URL;
+    if (feed && typeof feed === 'string') {
+      try { autoUpdater.setFeedURL({ provider: 'generic', url: feed }); } catch {}
+    }
+    autoUpdater.on('update-available', () => toast('Update available. Downloading…'));
+    autoUpdater.on('update-downloaded', () => {
+      toast('Update ready. Restarting…');
+      setTimeout(() => { try { autoUpdater.quitAndInstall(); } catch {} }, 800);
+    });
+    autoUpdater.on('error', (e) => console.error('[Updater] error', e && e.message || e));
+    // Initial check
+    try { autoUpdater.checkForUpdatesAndNotify(); } catch {}
+    // Periodic check every 6 hours
+    setInterval(() => { if (getOnline()) { try { autoUpdater.checkForUpdatesAndNotify(); } catch {} } }, 6 * 60 * 60 * 1000);
+  } catch (e) { console.error('[Updater] init failed', e); }
+}
+
+function checkForUpdatesManual() {
+  if (!app.isPackaged) return toast('Updates unavailable in development build.');
+  if (!autoUpdater) return toast('Updater unavailable.');
+  try { autoUpdater.checkForUpdates(); toast('Checking for updates…'); } catch (e) { toast('Update check failed.'); }
+}
+
 app.whenReady().then(async () => {
   try { if (process.platform === 'darwin' && app.dock) app.dock.hide(); } catch {}
   createTray();
   registerShortcuts();
   setupIPC();
+  setupAutoUpdates();
   watchOnline(onOnlineChange);
   try { connectedState = !!(await getToken()); } catch { connectedState = false; }
   if (!connectedState) {

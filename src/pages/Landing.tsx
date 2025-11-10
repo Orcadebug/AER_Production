@@ -66,7 +66,7 @@ function PlanPro({ yearly }: { yearly: boolean }) {
         <li className="flex items-start gap-2"><Upload className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Bulk uploads</span></li>
         <li className="flex items-start gap-2"><Sparkles className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Advanced features</span></li>
       </ul>
-      <Button onClick={() => window.location.assign(price.href)} className="mt-6 w-full">
+      <Button onClick={() => navigate(`/pricing?plan=pro&billing=${yearly ? 'yearly' : 'monthly'}`)} className="mt-6 w-full">
         Upgrade Now
       </Button>
     </div>
@@ -90,7 +90,7 @@ function PlanMax({ yearly }: { yearly: boolean }) {
         <li className="flex items-start gap-2"><Search className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>1,000 searches/month</span></li>
         <li className="flex items-start gap-2"><LifeBuoy className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Priority support</span></li>
       </ul>
-      <Button onClick={() => window.location.assign(price.href)} variant="outline" className="mt-6 w-full">
+      <Button onClick={() => navigate(`/pricing?plan=max&billing=${yearly ? 'yearly' : 'monthly'}`)} variant="outline" className="mt-6 w-full">
         Get Max
       </Button>
     </div>
@@ -112,14 +112,22 @@ export default function Landing() {
             <img src="/logo.png" alt="Aer" className="h-8 w-8" />
             <span className="text-2xl font-bold tracking-tight">Aer</span>
           </div>
-          <Button
-            onClick={() => navigate(isAuthenticated ? "/dashboard" : "/auth")}
-            className="bg-[#8BA888] hover:bg-[#7A9777]"
-            disabled={isLoading}
-          >
-            {isAuthenticated ? "Dashboard" : "Get Started"}
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => navigate("/pricing")}
+            >
+              Pricing
+            </Button>
+            <Button
+              onClick={() => navigate(isAuthenticated ? "/dashboard" : "/auth")}
+              className="bg-[#8BA888] hover:bg-[#7A9777]"
+              disabled={isLoading}
+            >
+              {isAuthenticated ? "Dashboard" : "Get Started"}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </nav>
 

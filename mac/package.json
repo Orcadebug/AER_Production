@@ -7,11 +7,14 @@
   "type": "commonjs",
   "scripts": {
     "dev": "electron .",
-    "start": "electron ."
+    "start": "electron .",
+    "build:mac": "electron-builder --mac zip dmg",
+    "publish": "electron-builder -p always"
   },
   "dependencies": {
     "active-win": "^8.2.1",
     "electron-store": "^8.1.0",
+    "electron-updater": "^6.4.7",
     "keytar": "^7.9.0",
     "openai": "^4.104.0",
     "sharp": "^0.33.5",
@@ -24,6 +27,25 @@
   "devDependencies": {
     "electron": "31.7.7",
     "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.aer.macos",
+    "productName": "Aer",
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": ["zip", "dmg"],
+      "hardenedRuntime": true,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Orcadebug",
+        "repo": "Aer_Context_beta",
+        "releaseType": "release"
+      }
+    ]
   },
   "pnpm": {
     "onlyBuiltDependencies": [

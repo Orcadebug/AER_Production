@@ -254,20 +254,9 @@ export default function Settings() {
                   )}
                   <div className="flex flex-col gap-2 pt-2">
                     {(user?.membershipTier === "free" || user?.membershipTier === "beta") && (
-                      <>
-                        <div className="flex flex-wrap gap-2">
-                          <Button variant="outline" onClick={() => startCheckout("pro", "monthly")}>Upgrade to Pro (Monthly)</Button>
-                          <Button variant="outline" onClick={() => startCheckout("pro", "yearly")}>Upgrade to Pro (Yearly)</Button>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button onClick={() => startCheckout("max", "monthly")}>
-                            Upgrade to Max (Monthly)
-                          </Button>
-                          <Button onClick={() => startCheckout("max", "yearly")}>
-                            Upgrade to Max (Yearly)
-                          </Button>
-                        </div>
-                      </>
+                      <div className="flex flex-wrap gap-2">
+                        <Button onClick={() => navigate("/pricing")}>View Pricing & Upgrade</Button>
+                      </div>
                     )}
                     {(((myUsage as any)?.tier === "pro") || ((myUsage as any)?.tier === "max")) && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
