@@ -88,8 +88,8 @@ export const createBillingPortal: any = action({
     }
     if (!customerId) {
       const c: any = await stripe.customers.create({ email: (user as any).email || undefined });
-      customerId = c.id;
-      await ctx.runMutation(internal.paymentsInternal.setStripeCustomerId, { userId: user._id, customerId });
+      customerId = c.id as string;
+      await ctx.runMutation(internal.paymentsInternal.setStripeCustomerId, { userId: user._id, customerId: customerId as string });
     }
 
     const session: any = await (stripe as any).billingPortal.sessions.create({
