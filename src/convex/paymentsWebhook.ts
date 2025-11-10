@@ -30,6 +30,9 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
       if (p && (p === MAX_M || p === MAX_Y)) return "max";
       return "pro"; // default
     };
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
         const customerId = session.customer as string | undefined;
         const subId = (session.subscription as string) || undefined;
         let tier: "pro" | "max" = "pro";
