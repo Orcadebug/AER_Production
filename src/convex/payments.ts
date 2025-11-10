@@ -25,8 +25,19 @@ export const createCheckoutSession: any = action({
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-    // Ensure a customer exists
+    // Ensure a valid customer exists for the current Stripe environment
     let customerId = (user as any).stripeCustomerId as string | undefined;
+    try {
+      if (customerId) {
+        const existing = await stripe.customers.retrieve(customerId);
+        if ((existing as any)?.deleted) {
+          customerId = undefined;
+        }
+      }
+    } catch {
+      // Stored ID is invalid for this Stripe account/mode; create a fresh one
+      customerId = undefined;
+    }
     if (!customerId) {
       const customer: any = await stripe.customers.create({ email: (user as any).email || undefined });
       customerId = customer.id;
@@ -61,10 +72,26 @@ export const createBillingPortal: any = action({
     }
     const user: any = await ctx.runQuery(internal.users.getUserById, { userId: args.userId });
     if (!user) throw new Error("Unauthorized");
-    const customerId = (user as any).stripeCustomerId as string | undefined;
-    if (!customerId) throw new Error("No Stripe customer on file");
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+    // Ensure a valid customer exists for this environment
+    let customerId = (user as any).stripeCustomerId as string | undefined;
+    try {
+      if (customerId) {
+        const existing = await stripe.customers.retrieve(customerId);
+        if ((existing as any)?.deleted) {
+          customerId = undefined;
+        }
+      }
+    } catch {
+      customerId = undefined;
+    }
+    if (!customerId) {
+      const c: any = await stripe.customers.create({ email: (user as any).email || undefined });
+      customerId = c.id;
+      await ctx.runMutation(internal.paymentsInternal.setStripeCustomerId, { userId: user._id, customerId });
+    }
+
     const session: any = await (stripe as any).billingPortal.sessions.create({
       customer: customerId,
       return_url: args.returnUrl,
