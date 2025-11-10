@@ -104,7 +104,7 @@ export const createProCheckout = httpAction(async (ctx, req) => {
 
     const priceId = (process.env as any)[keyName] as string | undefined;
     if (!process.env.STRIPE_SECRET_KEY || !priceId || !process.env.SITE_URL) {
-      return new Response(JSON.stringify({ error: "Stripe not configured for this plan" }), {
+      return new Response(JSON.stringify({ error: "Stripe not configured for this plan", plan, billing, missing: { hasSecret: !!process.env.STRIPE_SECRET_KEY, hasPrice: !!priceId, hasSiteUrl: !!process.env.SITE_URL } }), {
         status: 501,
         headers: { "Content-Type": "application/json", ...buildCorsHeaders(origin) },
       });
@@ -120,9 +120,11 @@ export const createProCheckout = httpAction(async (ctx, req) => {
       status: 200,
       headers: { "Content-Type": "application/json", ...buildCorsHeaders(origin) },
     });
-  } catch (e) {
+  } catch (e: any) {
     const origin = req.headers.get("Origin");
-    return new Response(JSON.stringify({ error: "Checkout failed" }), {
+    const message = e?.message || String(e);
+    try { console.error("Checkout failed:", message); } catch {}
+    return new Response(JSON.stringify({ error: "Checkout failed", detail: message }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...buildCorsHeaders(origin) },
     });

@@ -33,15 +33,20 @@ export const createCheckoutSession: any = action({
       await ctx.runMutation(internal.paymentsInternal.setStripeCustomerId, { userId: user._id, customerId: customerId as string });
     }
 
-    const session: any = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      customer: customerId,
-      line_items: [{ price: args.priceId, quantity: 1 }],
-      success_url: args.successUrl,
-      cancel_url: args.cancelUrl,
-    });
-
-    return { url: session.url ?? null };
+    try {
+      const session: any = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        customer: customerId,
+        line_items: [{ price: args.priceId, quantity: 1 }],
+        success_url: args.successUrl,
+        cancel_url: args.cancelUrl,
+      });
+      return { url: session.url ?? null };
+    } catch (e: any) {
+      const message = e?.message || String(e);
+      try { console.error("Stripe session error:", message); } catch {}
+      throw new Error(message);
+    }
   },
 });
 
