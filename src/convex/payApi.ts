@@ -96,15 +96,31 @@ export const createProCheckout = httpAction(async (ctx, req) => {
     const plan = String(body?.plan || "pro").toLowerCase(); // "pro" | "max"
     const billing = String(body?.billing || "monthly").toLowerCase(); // "monthly" | "yearly"
 
-    const keyName = (() => {
+    const priceKey = (() => {
       const p = plan === "max" ? "MAX" : "PRO";
       const b = billing === "yearly" ? "YEARLY" : "MONTHLY";
       return `STRIPE_PRICE_${p}_${b}` as const;
     })();
+    const productKeyCandidates = (() => {
+      const p = plan === "max" ? "MAX" : "PRO";
+      const b = billing === "yearly" ? "YEARLY" : "MONTHLY";
+      return [
+        `STRIPE_PRODUCT_${p}_${b}` as const, // per-billing product
+        `STRIPE_PRODUCT_${p}` as const,      // fallback: plan-level product
+      ];
+    })();
 
-    const priceId = (process.env as any)[keyName] as string | undefined;
-    if (!process.env.STRIPE_SECRET_KEY || !priceId || !process.env.SITE_URL) {
-      return new Response(JSON.stringify({ error: "Stripe not configured for this plan", plan, billing, missing: { hasSecret: !!process.env.STRIPE_SECRET_KEY, hasPrice: !!priceId, hasSiteUrl: !!process.env.SITE_URL } }), {
+    const priceId = (process.env as any)[priceKey] as string | undefined;
+    const productId = ((): string | undefined => {
+      for (const k of productKeyCandidates) {
+        const val = (process.env as any)[k] as string | undefined;
+        if (val) return val;
+      }
+      return undefined;
+    })();
+
+    if (!process.env.STRIPE_SECRET_KEY || !process.env.SITE_URL || (!priceId && !productId)) {
+      return new Response(JSON.stringify({ error: "Stripe not configured for this plan", plan, billing, missing: { hasSecret: !!process.env.STRIPE_SECRET_KEY, hasPrice: !!priceId, hasProduct: !!productId, hasSiteUrl: !!process.env.SITE_URL } }), {
         status: 501,
         headers: { "Content-Type": "application/json", ...buildCorsHeaders(origin) },
       });
@@ -113,6 +129,8 @@ export const createProCheckout = httpAction(async (ctx, req) => {
     const url = await ctx.runAction((api as any).payments.createCheckoutSession, {
       userId,
       priceId,
+      productId,
+      billing,
       successUrl: `${process.env.SITE_URL || ''}/settings?upgrade=success`,
       cancelUrl: `${process.env.SITE_URL || ''}/settings?upgrade=cancel`,
     });
