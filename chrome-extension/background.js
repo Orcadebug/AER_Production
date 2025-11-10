@@ -257,12 +257,28 @@ async function uploadToAer(data) {
     
     if (!response.ok) {
       let errorMessage = `Upload failed (${response.status})`;
+      let upgradeHint = false;
       try {
         const errorJson = JSON.parse(responseText);
+        if (errorJson && (errorJson.code === 'CREDITS_EXHAUSTED' || errorJson.suggestUpgrade || /Storage limit/i.test(errorJson.error||''))) {
+          upgradeHint = true;
+        }
         errorMessage += `: ${JSON.stringify(errorJson)}`;
       } catch {
         errorMessage += `: ${responseText}`;
       }
+      // Show friendly notification
+      try {
+        const msg = upgradeHint
+          ? (response.status === 402 && /Storage/i.test(errorMessage) ? 'Storage limit reached. Please upgrade to continue.' : 'AI credits exhausted. Please upgrade to continue.')
+          : 'Upload failed. Please try again.';
+        chrome.notifications.create({
+          type: 'basic',
+          iconUrl: chrome.runtime.getURL('icon128.png'),
+          title: 'Aer',
+          message: msg
+        });
+      } catch {}
       throw new Error(errorMessage);
     }
 
@@ -643,6 +659,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       uploadToAer(payload)
         .then((result) => sendResponse({ success: true, result }))
         .catch((error) => sendResponse({ success: false, error: error.message }));
+      return true;
+    }
+
+    case 'assistSearch': {
+      (async () => {
+        try {
+          const query = (request.query || '').toString().trim();
+          if (!query || query.length < 3) return sendResponse({ success: true, results: [] });
+          const storage = await chrome.storage.local.get(['authToken', 'token', 'apiUrl', 'apiBaseUrl']);
+          const authToken = storage.authToken || storage.token || API_TOKEN;
+          if (!authToken) throw new Error('No auth token');
+          const apiBase = storage.apiUrl || storage.apiBaseUrl || DEFAULT_API_BASE;
+          const { results } = await semanticSearch(query, authToken, apiBase, 30);
+          const ranked = rankByRelevance(query, results).slice(0, 15);
+          sendResponse({ success: true, results: ranked });
+        } catch (e) {
+          try {
+            chrome.notifications.create({ type: 'basic', iconUrl: chrome.runtime.getURL('icon128.png'), title: 'Aer', message: 'AI search limit reached or failed. Upgrade for more.' });
+          } catch {}
+          sendResponse({ success: false, error: e?.message || String(e) });
+        }
+      })();
       return true;
     }
 

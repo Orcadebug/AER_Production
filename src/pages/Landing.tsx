@@ -64,7 +64,6 @@ function PlanPro({ yearly }: { yearly: boolean }) {
       <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
         <li className="flex items-start gap-2"><HardDrive className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>10 GB storage</span></li>
         <li className="flex items-start gap-2"><Search className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>300 searches/month</span></li>
-        <li className="flex items-start gap-2"><Upload className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Bulk uploads</span></li>
         <li className="flex items-start gap-2"><Sparkles className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Advanced features</span></li>
       </ul>
       <Button onClick={() => navigate(`/pricing?plan=pro&billing=${yearly ? 'yearly' : 'monthly'}`)} className="mt-6 w-full">
@@ -103,7 +102,7 @@ function PlanMax({ yearly }: { yearly: boolean }) {
 export default function Landing() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading } = useAuth();
-  const [yearly, setYearly] = useState(true);
+  const [yearly, setYearly] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -238,8 +237,8 @@ export default function Landing() {
               number: "1",
               title: "Upload Anywhere",
               details: [
-                "Desktop app for files, PDFs, and bulk uploads with tagging (Mac app live; Windows coming soon; Linux planned)",
-                "Browser extension auto-saves AI chats, web highlights, and pages (Chrome live; Edge compatible; Firefox planned). Right-click to insert saved context into ChatGPT, Claude, Perplexity, etc."
+                "Desktop app for files and PDFs with tagging",
+                "Browser extension: right-click to save AI chats, web highlights, and pages (Chrome live; Edge compatible; Firefox planned)."
               ],
               icon: Upload
             },
@@ -325,11 +324,9 @@ export default function Landing() {
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
-                <span>Bulk uploads with tagging</span>
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
-                <span>Mac app live; Windows coming soon; Linux planned</span>
               </li>
             </ul>
           </motion.div>
@@ -348,7 +345,7 @@ export default function Landing() {
             <ul className="space-y-3 text-muted-foreground">
               <li className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
-                <span>Auto-save AI chats</span>
+                <span>Right-click to save AI chats</span>
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
@@ -555,10 +552,6 @@ export default function Landing() {
             {
               q: "What file types are supported?",
               a: "PDFs, Word docs, text files, images, and direct browser captures. AI auto-tags and indexes everything for instant search."
-            },
-            {
-              q: "Can I export my data?",
-              a: "Yes. Export everything as JSON or Markdown anytime. Your data, your keys, full control. No lock-in."
             },
             {
               q: "How secure is Aer?",

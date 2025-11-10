@@ -30,11 +30,11 @@ export default function Pricing() {
   const { user } = useAuth();
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const [yearly, setYearly] = useState(true);
+  const [yearly, setYearly] = useState(false);
   const [busy, setBusy] = useState<null | string>(null);
 
   useEffect(() => {
-    const b = (params.get("billing") || "yearly").toLowerCase();
+    const b = (params.get("billing") || "monthly").toLowerCase();
     setYearly(b === "yearly");
   }, [params]);
 
@@ -114,7 +114,6 @@ export default function Pricing() {
             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
               <li className="flex items-start gap-2"><HardDrive className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>10 GB storage</span></li>
               <li className="flex items-start gap-2"><Search className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>300 searches/month</span></li>
-              <li className="flex items-start gap-2"><Upload className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Bulk uploads</span></li>
               <li className="flex items-start gap-2"><Sparkles className="mt-0.5 h-4 w-4 text-[#8BA888]" /><span>Advanced features</span></li>
             </ul>
             <Button className="mt-6 w-full" disabled={busy === "pro"} onClick={() => startCheckout("pro")}>

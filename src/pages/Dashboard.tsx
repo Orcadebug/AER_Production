@@ -55,6 +55,7 @@ export default function Dashboard() {
   );
   const projects = useQuery(api.projects.list);
   const tags = useQuery(api.tags.list);
+  const myUsage = useQuery(api.entitlements.getMyUsage);
 
   const matchQueryToTags = useAction(api.ai.matchQueryToTags);
   const decryptServer = useAction(api.contexts.decryptServer);
@@ -69,12 +70,21 @@ export default function Dashboard() {
   const generateUploadUrl = useAction(api.contexts.generateUploadUrl);
 
   // AI-powered search effect
+  const [aiLimitNotified, setAiLimitNotified] = useState(false);
+
   useEffect(() => {
     const performAiSearch = async () => {
       if (!searchQuery || searchQuery.trim().length === 0) {
         setAiSearchResults(null);
         setIsSearching(false);
         return;
+      }
+      // Notify if AI credits exhausted
+      if (myUsage && typeof (myUsage as any).allowedPerplexity === 'number' && (myUsage as any).usedPerplexity >= (myUsage as any).allowedPerplexity) {
+        if (!aiLimitNotified) {
+          toast.error("AI credits exhausted. Upgrade to re-enable AI results.");
+          setAiLimitNotified(true);
+        }
       }
 
       if (!searchResults || searchResults.length === 0) {
@@ -205,6 +215,11 @@ export default function Dashboard() {
 
   const handleAddNote = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Block if storage limit reached
+    if (myUsage && (myUsage as any).allowedStorageBytes && (myUsage as any).storageBytes >= (myUsage as any).allowedStorageBytes) {
+      toast.error("Storage limit reached. Upgrade your plan to add more.");
+      return;
+    }
     const formData = new FormData(e.currentTarget);
     const title = formData.get("title") as string;
     const content = formData.get("content") as string;
@@ -237,8 +252,13 @@ export default function Dashboard() {
       });
       toast.success("Note added successfully");
       setIsAddingContext(false);
-    } catch (error) {
-      toast.error("Failed to add note");
+    } catch (error: any) {
+      const msg = String(error?.message || error);
+      if (/Storage limit/i.test(msg)) {
+        toast.error("Storage limit reached. Upgrade your plan to add more.");
+      } else {
+        toast.error("Failed to add note");
+      }
     }
   };
 
@@ -247,6 +267,11 @@ export default function Dashboard() {
     if (!file) return;
 
     try {
+      // Block if storage limit reached beforehand
+      if (myUsage && (myUsage as any).allowedStorageBytes && (myUsage as any).storageBytes >= (myUsage as any).allowedStorageBytes) {
+        toast.error("Storage limit reached. Upgrade your plan to upload files.");
+        return;
+      }
       toast.info("Processing file...");
       
       const uploadUrl = await generateUploadUrl();
@@ -330,8 +355,15 @@ export default function Dashboard() {
         plaintextContent: fileContent,
       });
       toast.success("File uploaded successfully");
-    } catch (error) {
-      toast.error("Failed to upload file");
+    } catch (error: any) {
+      const msg = String(error?.message || error);
+      if (/Storage limit/i.test(msg)) {
+        toast.error("Storage limit reached. Upgrade your plan to upload files.");
+      } else if (/Rate limit/i.test(msg)) {
+        toast.error("Rate limit exceeded. Try again later or upgrade your plan.");
+      } else {
+        toast.error("Failed to upload file");
+      }
     }
   };
 

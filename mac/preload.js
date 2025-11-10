@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('aer', {
   // Connect
   saveToken: (token) => ipcRenderer.invoke('connect:save-token', token),
   openHelp: () => ipcRenderer.invoke('connect:open-help'),
+  openConnect: () => ipcRenderer.invoke('open:connect'),
 
   // Overlay
   onFlowUpdate: (cb) => ipcRenderer.on('flow:update', (_e, payload) => cb(payload)),

@@ -51,7 +51,7 @@ function buildMenu() {
     { type: 'separator' },
     { label: 'View in Aer', click: () => shell.openExternal(UI_SITE_URL) },
     { label: 'Preferences…', accelerator: 'CommandOrControl+,', click: showPrefs },
-    ...(connected ? [{ label: 'Sign out', click: async () => { await clearToken(); connectedState = false; rebuildUI(); } }] : []),
+    ...(connected ? [{ label: 'Sign out', click: async () => { await clearToken(); connectedState = false; rebuildUI(); showConnect(); } }] : [{ label: 'Connect…', click: showConnect }]),
     { type: 'separator' },
     { label: 'Check for Updates…', click: () => checkForUpdatesManual() },
     { label: 'Quit', accelerator: 'CommandOrControl+Q', click: () => app.quit() }
@@ -274,7 +274,8 @@ function setupIPC() {
     rebuildUI();
     return true;
   });
-  ipcMain.handle('prefs:signout', async () => { await clearToken(); connectedState = false; store.set('connected', false); rebuildUI(); return true; });
+  ipcMain.handle('prefs:signout', async () => { await clearToken(); connectedState = false; store.set('connected', false); rebuildUI(); showConnect(); return true; });
+  ipcMain.handle('open:connect', async () => { showConnect(); return true; });
   ipcMain.handle('panel:close', async () => { if (overlayWin) overlayWin.hide(); });
 }
 

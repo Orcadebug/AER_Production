@@ -115,6 +115,7 @@ export const getMyUsage = query({
     if (!user) return null;
     const { usage, limits, tier } = (await ctx.runQuery(internal.entitlements.getUsage, { userId: user._id })) as any;
     const daily = (await ctx.runQuery(internal.entitlements.getDailyPremiumUsage, { userId: user._id })) as any;
+    const allowedStorageBytes = limits.storageBytes === "unlimited" ? Number.MAX_SAFE_INTEGER : (limits.storageBytes as number);
     return {
       tier,
       allowedPerplexity: limits.perplexityPerMonth,
@@ -122,6 +123,7 @@ export const getMyUsage = query({
       usedSearchesThisMonth: usage?.searchRequests || 0,
       usedPremiumImagesToday: daily?.used || 0,
       storageBytes: usage?.storageBytes || 0,
+      allowedStorageBytes,
     };
   },
 });
