@@ -29,11 +29,9 @@ export default function Downloads() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">Available now</p>
-              <Button asChild className="w-full">
-                <a href="/support?topic=mac-download">
-                  <Download className="h-4 w-4 mr-2" /> Download for macOS
-                </a>
+              <p className="text-sm text-muted-foreground">Coming soon</p>
+              <Button disabled className="w-full" variant="outline">
+                <Download className="h-4 w-4 mr-2" /> Coming soon
               </Button>
             </CardContent>
           </Card>
@@ -47,7 +45,7 @@ export default function Downloads() {
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">Right-click to save chats and pages</p>
               <Button asChild className="w-full">
-                <a href="/support?topic=chrome-extension">
+                <a href="https://github.com/Orcadebug/Aer-Browser-Extenstion" target="_blank" rel="noopener noreferrer">
                   <Download className="h-4 w-4 mr-2" /> Get for Chrome
                 </a>
               </Button>
