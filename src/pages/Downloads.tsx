@@ -22,7 +22,6 @@ export default function Downloads() {
           Save is easy: use the browser extension to right-click and save chats, pages, and highlights, or use the desktop app for files and PDFs.
         </p>
         <div className="grid md:grid-cols-4 gap-6">
-        <div className="grid md:grid-cols-4 gap-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
