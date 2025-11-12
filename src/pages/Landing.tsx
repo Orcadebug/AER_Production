@@ -142,7 +142,7 @@ export default function Landing() {
         >
           <div className="inline-flex items-center gap-2 bg-[#8BA888]/10 border border-[#8BA888]/20 rounded-full px-4 py-2 mb-8">
             <Monitor className="h-4 w-4 text-[#8BA888]" />
-            <span className="text-sm font-medium text-[#8BA888]">Browser + Cloud live today – Mac desktop live; Windows soon; Linux planned</span>
+            <span className="text-sm font-medium text-[#8BA888]">Extensions live today — Desktop app coming soon</span>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight">
@@ -165,13 +165,16 @@ export default function Landing() {
               Start Free
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button
+              <Button
               size="lg"
               variant="outline"
               className="text-lg px-8"
               onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}
             >
               See How It Works
+            </Button>
+            <Button asChild size="lg" variant="outline" className="text-lg px-8">
+              <a href="https://www.youtube.com/watch?v=sPun78kCSlw" target="_blank" rel="noopener noreferrer">Watch Demo</a>
             </Button>
           </div>
         </motion.div>
@@ -237,7 +240,7 @@ export default function Landing() {
               number: "1",
               title: "Upload Anywhere",
               details: [
-                "Desktop app for files and PDFs with tagging",
+                "Desktop app (coming soon) for files and PDFs with tagging",
                 "Browser extension: right-click to save AI chats, web highlights, and pages (Chrome live; Edge compatible; Firefox planned)."
               ],
               icon: Upload
@@ -386,7 +389,7 @@ export default function Landing() {
             </div>
             <div>
               <Globe className="h-6 w-6 text-[#8BA888] mx-auto mb-2" />
-              <p className="text-sm">Cross-platform access (web + extensions; desktop rolling out)</p>
+              <p className="text-sm">Cross-platform access (web + extensions; desktop coming soon)</p>
             </div>
           </div>
         </motion.div>
@@ -498,12 +501,11 @@ export default function Landing() {
                 { feature: "Real-time Sync", aer: true, notion: true, obsidian: false },
                 { feature: "E2E Encryption", aer: true, notion: false, obsidian: true },
                 { feature: "AI Tagging", aer: true, notion: false, obsidian: false },
-                { feature: "Semantic Search", aer: true, notion: false, obsidian: false },
-                { feature: "Desktop Apps", aer: "Mac app", notion: true, obsidian: true },
+                { feature: "Semantic Search", aer: true, notion: false, obsidian: false }
               ].map((row: any, idx: number) => (
                 <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
                   <td className="p-4 font-medium">{row.feature}</td>
-{([row.aer, row.notion, row.obsidian] as any[]).map((val, i) => (
+                  {([row.aer, row.notion, row.obsidian] as any[]).map((val, i) => (
                     <td key={i} className="p-4 text-center">
                       {typeof val === "boolean" ? (
                         val ? (
@@ -539,15 +541,15 @@ export default function Landing() {
           {[
             {
               q: "What's the difference between desktop and browser extension?",
-              a: "Desktop app is for uploading files, PDFs, and bulk content. Browser extension captures AI chats, webpages, and highlights. Use both together for full coverage."
+              a: "Desktop app (coming soon) is for uploading files, PDFs, and bulk content. Browser extension captures AI chats, webpages, and highlights. Use both together for full coverage."
             },
             {
               q: "How does cross-device sync work?",
               a: "Real-time end-to-end encrypted sync. Your encrypted data syncs instantly across all devices. Encryption keys never leave your devices—zero-knowledge architecture."
             },
             {
-              q: "Is the Mac desktop app available?",
-              a: "Yes — Mac desktop is live. Windows is coming soon; Linux is planned."
+              q: "Is the desktop app available?",
+              a: "The desktop app is coming soon."
             },
             {
               q: "What file types are supported?",
@@ -559,7 +561,7 @@ export default function Landing() {
             },
             {
               q: "What platforms will Aer support?",
-              a: "Live now: Mac desktop app, Chrome extension (Edge compatible), web app. Coming soon: Windows desktop, Linux desktop, Firefox extension, mobile apps (iOS/Android)."
+              a: "Live now: Chrome extension (Edge compatible) and web app. Coming soon: Desktop apps (Mac/Windows/Linux), Firefox extension, and mobile apps (iOS/Android)."
             }
           ].map((faq, idx) => (
             <motion.div
@@ -588,7 +590,7 @@ export default function Landing() {
         >
           <h2 className="text-4xl font-bold tracking-tight mb-2">Your Context. Every Platform. One Click Away.</h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Free tier includes web + extensions; Mac desktop is live. No credit card required.
+            Free tier includes web + extensions; Desktop app coming soon. No credit card required.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
             <Button
