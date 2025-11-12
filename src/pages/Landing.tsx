@@ -241,6 +241,8 @@ export default function Landing() {
               title: "Upload Anywhere",
               details: [
                 "Desktop app (coming soon) for files and PDFs with tagging",
+                "Add screenshots from desktop (coming soon)",
+                "Connect watched folders for auto-upload (coming soon)",
                 "Browser extension: right-click to save AI chats, web highlights, and pages (Chrome live; Edge compatible; Firefox planned)."
               ],
               icon: Upload
@@ -327,9 +329,11 @@ export default function Landing() {
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
+                <span>Add screenshots from desktop</span>
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-[#8BA888] mt-0.5 flex-shrink-0" />
+                <span>Connect folders to auto-upload</span>
               </li>
             </ul>
           </motion.div>
